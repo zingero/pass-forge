@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, Shield, X } from 'lucide-react';
-import { commonWords } from './words';
+import { generatePassword as generate, PasswordOptions } from './passwordGenerator';
 
 function App() {
   const [password, setPassword] = useState('');
   const [length, setLength] = useState(16);
-  const [options, setOptions] = useState({
+  const [options, setOptions] = useState<PasswordOptions>({
     uppercase: true,
     lowercase: true,
     numbers: true,
@@ -14,100 +14,8 @@ function App() {
     memorable: false
   });
 
-  const generateMemorablePassword = () => {
-    let result = '';
-    const array = new Uint32Array(50); // Get more random values than needed
-    crypto.getRandomValues(array);
-    let arrayIndex = 0;
-    
-    // Keep adding words until we get close to or exceed the desired length
-    while (result.length < length && arrayIndex < array.length) {
-      const word = commonWords[array[arrayIndex] % commonWords.length];
-      const processedWord = options.uppercase 
-        ? word.charAt(0).toUpperCase() + word.slice(1)
-        : word;
-      
-      // Only add the word if it won't make us go too far over the length
-      if (result.length + processedWord.length <= length) {
-        result += processedWord;
-        arrayIndex++;
-      } else {
-        break;
-      }
-    }
-    
-    // Add numbers and symbols if enabled and there's room
-    const remainingLength = length - result.length;
-    
-    if (options.numbers && remainingLength > 0) {
-      // Add 2-3 digits
-      const numDigits = Math.min(remainingLength, 2 + (array[arrayIndex] % 2));
-      for (let i = 0; i < numDigits; i++) {
-        result += (array[arrayIndex + i] % 10).toString();
-      }
-      arrayIndex += numDigits;
-    }
-    
-    if (options.symbols && result.length < length) {
-      const symbols = '!@#$%^&*';
-      const symbolsToAdd = Math.min(length - result.length, 2);
-      for (let i = 0; i < symbolsToAdd; i++) {
-        result += symbols[array[arrayIndex + i] % symbols.length];
-      }
-    }
-    
-    // If we still haven't reached the desired length, pad with random characters
-    while (result.length < length) {
-      const chars = (options.uppercase ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : '') +
-                   (options.lowercase ? 'abcdefghijklmnopqrstuvwxyz' : '') +
-                   (options.numbers ? '0123456789' : '') +
-                   (options.symbols ? '!@#$%^&*' : '');
-      
-      if (chars.length === 0) break;
-      result += chars[array[arrayIndex++] % chars.length];
-    }
-    
-    return result;
-  };
-
-  const generateRandomPassword = () => {
-    let uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let lowercase = 'abcdefghijklmnopqrstuvwxyz';
-    let numbers = '0123456789';
-    let symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-    if (options.avoidSimilar) {
-      uppercase = uppercase.replace(/[IO]/g, '');
-      lowercase = lowercase.replace(/[l]/g, '');
-      numbers = numbers.replace(/[10]/g, '');
-    }
-
-    let chars = '';
-    if (options.uppercase) chars += uppercase;
-    if (options.lowercase) chars += lowercase;
-    if (options.numbers) chars += numbers;
-    if (options.symbols) chars += symbols;
-
-    if (chars === '') {
-      return 'Please select at least one option';
-    }
-
-    let generatedPassword = '';
-    const array = new Uint32Array(length);
-    crypto.getRandomValues(array);
-    
-    for (let i = 0; i < length; i++) {
-      generatedPassword += chars[array[i] % chars.length];
-    }
-
-    return generatedPassword;
-  };
-
   const generatePassword = () => {
-    const newPassword = options.memorable 
-      ? generateMemorablePassword()
-      : generateRandomPassword();
-    setPassword(newPassword);
+    setPassword(generate(length, options));
   };
 
   useEffect(() => {
