@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateRandomPassword, generateMemorablePassword, generatePassword, PasswordOptions } from './passwordGenerator';
+import { generateRandomPassword, generateMemorablePassword, generatePassword, PasswordOptions, MIN_LENGTH, MAX_LENGTH } from './passwordGenerator';
 
 const defaultOptions: PasswordOptions = {
   uppercase: true,
@@ -9,6 +9,16 @@ const defaultOptions: PasswordOptions = {
   avoidSimilar: false,
   memorable: false,
 };
+
+describe('constants', () => {
+  it('exports MIN_LENGTH as 8', () => {
+    expect(MIN_LENGTH).toBe(8);
+  });
+
+  it('exports MAX_LENGTH as 32', () => {
+    expect(MAX_LENGTH).toBe(32);
+  });
+});
 
 describe('generateRandomPassword', () => {
   it('generates a password of the specified length', () => {
@@ -153,8 +163,7 @@ describe('generateMemorablePassword', () => {
       avoidSimilar: false,
       memorable: true,
     };
-    const password = generateMemorablePassword(32, options);
-    expect(password).toBe('');
+    expect(() => generateMemorablePassword(32, options)).toThrow('Please select at least one option');
   });
 
   it('does not contain lowercase letters when lowercase is disabled', () => {

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Copy, X, Check, Eye, EyeOff } from 'lucide-react';
-import { generatePassword as generate, PasswordOptions } from './passwordGenerator';
+import { generatePassword as generate, PasswordOptions, MIN_LENGTH, MAX_LENGTH } from './passwordGenerator';
 import logoSvg from '/logo.svg';
 
-const CLIPBOARD_CLEAR_DELAY_SEC = 30;
+const CLIPBOARD_CLEAR_DELAY_SEC = 3;
 
 const optionEntries: { key: keyof PasswordOptions; label: string }[] = [
   { key: 'uppercase', label: 'Uppercase' },
@@ -21,6 +21,7 @@ function App() {
   const [length, setLength] = useState(16);
   const [showPassword, setShowPassword] = useState(true);
   const [clipboardCountdown, setClipboardCountdown] = useState<number | null>(null);
+  const [clipboardPendingClear, setClipboardPendingClear] = useState(false);
   const [options, setOptions] = useState<PasswordOptions>({
     uppercase: true,
     lowercase: true,
@@ -33,11 +34,13 @@ function App() {
   const sliderContainerRef = useRef<HTMLDivElement>(null);
   const clipboardTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval>>();
+  const clipboardClearDeadlineRef = useRef<number | null>(null);
 
   const generatePassword = useCallback(() => {
     try {
       setPassword(generate(length, options));
       setError(null);
+      setShowPassword(true);
     } catch (e) {
       setPassword('');
       setError((e as Error).message);
@@ -55,7 +58,7 @@ function App() {
     const handler = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -1 : 1;
-      setLength(prev => Math.min(Math.max(8, prev + delta), 32));
+      setLength(prev => Math.min(Math.max(MIN_LENGTH, prev + delta), MAX_LENGTH));
     };
 
     container.addEventListener('wheel', handler, { passive: false });
@@ -70,15 +73,35 @@ function App() {
   }, []);
 
   const clearClipboard = useCallback(() => {
-    navigator.clipboard.writeText('').catch(() => {
-      // If clearing fails (e.g. page not focused), retry on next focus
-      const onFocus = () => {
-        navigator.clipboard.writeText('').catch(() => {});
-        window.removeEventListener('focus', onFocus);
-      };
-      window.addEventListener('focus', onFocus);
+    navigator.clipboard.writeText('').then(() => {
+      clipboardClearDeadlineRef.current = null;
+      setClipboardPendingClear(false);
+    }).catch(() => {
+      setClipboardPendingClear(true);
     });
   }, []);
+
+  useEffect(() => {
+    const tryClearIfExpired = () => {
+      if (
+        clipboardClearDeadlineRef.current !== null &&
+        Date.now() >= clipboardClearDeadlineRef.current
+      ) {
+        clearClipboard();
+        setClipboardCountdown(null);
+        setClipboardPendingClear(false);
+        if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      }
+    };
+    // 'focus' fires when the page actually gains focus (required by Clipboard API)
+    window.addEventListener('focus', tryClearIfExpired);
+    document.addEventListener('visibilitychange', tryClearIfExpired);
+    return () => {
+      window.removeEventListener('focus', tryClearIfExpired);
+      document.removeEventListener('visibilitychange', tryClearIfExpired);
+    };
+  }, [clearClipboard]);
 
   const copyToClipboard = async () => {
     if (!password) return;
@@ -91,6 +114,7 @@ function App() {
       if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
 
+      setClipboardPendingClear(false);
       setClipboardCountdown(CLIPBOARD_CLEAR_DELAY_SEC);
       countdownIntervalRef.current = setInterval(() => {
         setClipboardCountdown(prev => {
@@ -102,6 +126,7 @@ function App() {
         });
       }, 1000);
 
+      clipboardClearDeadlineRef.current = Date.now() + CLIPBOARD_CLEAR_DELAY_SEC * 1000;
       clipboardTimeoutRef.current = setTimeout(() => {
         clearClipboard();
       }, CLIPBOARD_CLEAR_DELAY_SEC * 1000);
@@ -112,11 +137,16 @@ function App() {
 
   const clearPassword = () => {
     setPassword('');
+    if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setClipboardCountdown(null);
+    setClipboardPendingClear(false);
+    clearClipboard();
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white flex items-center justify-center p-4">
-      <div className="max-w-lg w-full space-y-8">
+      <div className="max-w-xl w-full space-y-8">
         <div className="text-center">
           <img src={logoSvg} alt="PassForge logo" className="mx-auto h-16 w-16 drop-shadow-lg" />
           <h1 className="mt-4 text-3xl font-bold tracking-tight">
@@ -170,6 +200,11 @@ function App() {
               Clipboard will be cleared in {clipboardCountdown}s
             </p>
           )}
+          {clipboardCountdown === null && clipboardPendingClear && (
+            <p className="text-xs text-yellow-400">
+              Focus back on this page to clear clipboard
+            </p>
+          )}
 
           {error && (
             <p className="text-red-400 text-sm" role="alert">{error}</p>
@@ -184,8 +219,8 @@ function App() {
                 <input
                   id="password-length"
                   type="range"
-                  min="8"
-                  max="32"
+                  min={MIN_LENGTH}
+                  max={MAX_LENGTH}
                   value={length}
                   onChange={(e) => setLength(Number(e.target.value))}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"

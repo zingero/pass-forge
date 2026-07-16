@@ -9,6 +9,9 @@ export interface PasswordOptions {
   memorable: boolean;
 }
 
+export const MIN_LENGTH = 8;
+export const MAX_LENGTH = 32;
+
 const SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
 function getUnbiasedIndex(max: number): number {
@@ -36,9 +39,22 @@ function getCharsets(options: PasswordOptions) {
   return { uppercase, lowercase, numbers, symbols: SYMBOLS };
 }
 
+function shuffleString(str: string): string {
+  const arr = str.split('');
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = getUnbiasedIndex(i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.join('');
+}
+
 export function generateMemorablePassword(length: number, options: PasswordOptions): string {
   const { numbers, symbols } = getCharsets(options);
   let result = '';
+
+  if (!options.uppercase && !options.lowercase && !options.numbers && !options.symbols) {
+    throw new Error('Please select at least one option');
+  }
 
   const reservedNumbers = options.numbers ? 2 : 0;
   const reservedSymbols = options.symbols ? 2 : 0;
@@ -69,7 +85,6 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
       let chars = '';
       if (options.uppercase) chars += uppercase;
       if (options.lowercase) chars += lowercase;
-      if (chars.length === 0) break;
       result += chars[getUnbiasedIndex(chars.length)];
     }
   }
@@ -89,7 +104,10 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
     }
   }
 
-  return result;
+  // Shuffle only the non-word suffix (numbers + symbols) to preserve word readability
+  const wordPart = result.slice(0, wordBudget);
+  const nonWordPart = result.slice(wordBudget);
+  return wordPart + shuffleString(nonWordPart);
 }
 
 export function generateRandomPassword(length: number, options: PasswordOptions): string {

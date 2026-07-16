@@ -72,6 +72,7 @@ describe('App component', () => {
     const clearButton = screen.getByTitle('Clear password');
     fireEvent.click(clearButton);
     expect(input.value).toBe('');
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('');
   });
 
   it('copies password to clipboard when copy button is clicked', async () => {
@@ -111,11 +112,44 @@ describe('App component', () => {
     const clearButton = screen.getByTitle('Clear password');
     fireEvent.click(clearButton);
 
+    // Clear calls writeText('') to clear clipboard; reset mock
+    (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mockClear();
+
     // After clear, the clear button disappears, but copy remains
     const copyButton = screen.getByTitle('Copy to clipboard');
     fireEvent.click(copyButton);
 
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  it('clears active clipboard timers when clear button is clicked after copy', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    expect(screen.getByText(/Clipboard will be cleared in/)).toBeInTheDocument();
+
+    const clearButton = screen.getByTitle('Clear password');
+    fireEvent.click(clearButton);
+
+    // Countdown should be gone and clipboard cleared immediately
+    expect(screen.queryByText(/Clipboard will be cleared in/)).not.toBeInTheDocument();
+
+    // Advancing time should NOT trigger another clipboard clear
+    writeText.mockClear();
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(writeText).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 
   it('handles wheel event to change length (scroll up increases)', () => {
@@ -196,7 +230,7 @@ describe('App component', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Failed to copy to clipboard');
   });
 
-  it('clears clipboard after 30 seconds', async () => {
+  it('clears clipboard after timeout', async () => {
     vi.useFakeTimers();
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
@@ -209,7 +243,7 @@ describe('App component', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(30000);
+      vi.advanceTimersByTime(3000);
     });
 
     expect(writeText).toHaveBeenLastCalledWith('');
@@ -228,15 +262,15 @@ describe('App component', () => {
       fireEvent.click(copyButton);
     });
 
-    // Copy again before 30s to trigger clearTimeout branch
+    // Copy again before timeout to trigger clearTimeout branch
     await act(async () => {
       fireEvent.click(copyButton);
     });
 
-    // Only one clipboard clear should fire at 30s from second copy
+    // Only one clipboard clear should fire at 3s from second copy
     writeText.mockClear();
     await act(async () => {
-      vi.advanceTimersByTime(30000);
+      vi.advanceTimersByTime(3000);
     });
 
     // The clipboard clear from second copy fires
@@ -249,7 +283,7 @@ describe('App component', () => {
     vi.useFakeTimers();
     const writeText = vi.fn()
       .mockResolvedValueOnce(undefined) // copy succeeds
-      .mockRejectedValueOnce(new Error('clear failed')); // 30s clear fails
+      .mockRejectedValueOnce(new Error('clear failed')); // timeout clear fails
 
     Object.assign(navigator, { clipboard: { writeText } });
 
@@ -262,7 +296,7 @@ describe('App component', () => {
 
     // Should not throw when clipboard clear fails
     await act(async () => {
-      vi.advanceTimersByTime(30000);
+      vi.advanceTimersByTime(3000);
     });
 
     expect(writeText).toHaveBeenLastCalledWith('');
@@ -308,13 +342,13 @@ describe('App component', () => {
       fireEvent.click(copyButton);
     });
 
-    expect(screen.getByText('Clipboard will be cleared in 30s')).toBeInTheDocument();
+    expect(screen.getByText('Clipboard will be cleared in 3s')).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(1000);
     });
 
-    expect(screen.getByText('Clipboard will be cleared in 25s')).toBeInTheDocument();
+    expect(screen.getByText('Clipboard will be cleared in 2s')).toBeInTheDocument();
 
     vi.useRealTimers();
   });
@@ -334,7 +368,7 @@ describe('App component', () => {
     expect(screen.getByText(/Clipboard will be cleared in/)).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(30000);
+      vi.advanceTimersByTime(3000);
     });
 
     expect(screen.queryByText(/Clipboard will be cleared in/)).not.toBeInTheDocument();
@@ -355,17 +389,17 @@ describe('App component', () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(10000);
+      vi.advanceTimersByTime(1000);
     });
 
-    expect(screen.getByText('Clipboard will be cleared in 20s')).toBeInTheDocument();
+    expect(screen.getByText('Clipboard will be cleared in 2s')).toBeInTheDocument();
 
-    // Copy again - should reset to 30
+    // Copy again - should reset to 3
     await act(async () => {
       fireEvent.click(copyButton);
     });
 
-    expect(screen.getByText('Clipboard will be cleared in 30s')).toBeInTheDocument();
+    expect(screen.getByText('Clipboard will be cleared in 3s')).toBeInTheDocument();
 
     vi.useRealTimers();
   });
@@ -381,15 +415,10 @@ describe('App component', () => {
 
   it('retries clipboard clear on focus when initial clear fails', async () => {
     vi.useFakeTimers();
-    let focusHandler: (() => void) | null = null;
-    const addEventSpy = vi.spyOn(window, 'addEventListener').mockImplementation((event, handler) => {
-      if (event === 'focus') focusHandler = handler as () => void;
-    });
-    const removeEventSpy = vi.spyOn(window, 'removeEventListener');
 
     const writeText = vi.fn()
       .mockResolvedValueOnce(undefined) // copy succeeds
-      .mockRejectedValueOnce(new Error('not focused')) // 30s clear fails
+      .mockRejectedValueOnce(new Error('not focused')) // timeout clear fails
       .mockResolvedValueOnce(undefined); // focus retry succeeds
 
     Object.assign(navigator, { clipboard: { writeText } });
@@ -401,23 +430,18 @@ describe('App component', () => {
       fireEvent.click(copyButton);
     });
 
+    // Timeout fires but clipboard write fails (page not focused)
     await act(async () => {
-      vi.advanceTimersByTime(30000);
+      vi.advanceTimersByTime(3000);
     });
 
-    // Focus handler should have been registered
-    expect(focusHandler).not.toBeNull();
-
-    // Simulate focus event
+    // Deadline is still set because write failed — simulate focus event
     await act(async () => {
-      focusHandler!();
+      window.dispatchEvent(new Event('focus'));
     });
 
     expect(writeText).toHaveBeenLastCalledWith('');
-    expect(removeEventSpy).toHaveBeenCalledWith('focus', focusHandler);
 
-    addEventSpy.mockRestore();
-    removeEventSpy.mockRestore();
     vi.useRealTimers();
   });
 });
