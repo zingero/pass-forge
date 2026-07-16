@@ -65,14 +65,15 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
   }
 
   if (options.numbers && result.length < length) {
-    const numDigits = Math.min(length - result.length, 2 + getUnbiasedIndex(2));
+    const remaining = length - result.length;
+    const numDigits = options.symbols ? Math.ceil(remaining / 2) : remaining;
     for (let i = 0; i < numDigits; i++) {
       result += numbers[getUnbiasedIndex(numbers.length)];
     }
   }
 
   if (options.symbols && result.length < length) {
-    const symbolsToAdd = Math.min(length - result.length, 2);
+    const symbolsToAdd = length - result.length;
     for (let i = 0; i < symbolsToAdd; i++) {
       result += symbols[getUnbiasedIndex(symbols.length)];
     }
@@ -106,6 +107,10 @@ export function generateRandomPassword(length: number, options: PasswordOptions)
 
   if (chars === '') {
     throw new Error('Please select at least one option');
+  }
+
+  if (length < requiredChars.length) {
+    throw new Error('Password length is too short for the selected options');
   }
 
   const allChars: string[] = [...requiredChars];
