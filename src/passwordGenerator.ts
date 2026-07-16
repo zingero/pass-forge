@@ -64,7 +64,7 @@ export function generateRandomPassword(length: number, options: PasswordOptions)
   let uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let lowercase = 'abcdefghijklmnopqrstuvwxyz';
   let numbers = '0123456789';
-  let symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
   if (options.avoidSimilar) {
     uppercase = uppercase.replace(/[IO]/g, '');

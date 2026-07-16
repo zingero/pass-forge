@@ -53,7 +53,7 @@ describe('generateRandomPassword', () => {
   it('contains only symbols when only symbols is selected', () => {
     const options: PasswordOptions = { ...defaultOptions, uppercase: false, lowercase: false, numbers: false };
     const password = generateRandomPassword(16, options);
-    expect(password).toMatch(/^[!@#$%^&*()\\_+\-=\[\]{}|;:,.<>?]+$/);
+    expect(password).toMatch(/^[!@#$%^&*()_+\-=[\]{}|;:,.<>?]+$/);
   });
 
   it('returns error message when no options are selected', () => {

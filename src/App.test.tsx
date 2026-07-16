@@ -11,12 +11,13 @@ describe('App component', () => {
 
   it('renders the heading', () => {
     render(<App />);
-    expect(screen.getByText('Secure Password Generator')).toBeInTheDocument();
+    expect(screen.getByText('Pass')).toBeInTheDocument();
+    expect(screen.getByText('Forge')).toBeInTheDocument();
   });
 
   it('renders the subtitle', () => {
     render(<App />);
-    expect(screen.getByText('Generate strong passwords locally in your browser')).toBeInTheDocument();
+    expect(screen.getByText('Forge strong passwords locally in your browser')).toBeInTheDocument();
   });
 
   it('generates a password on initial render', () => {

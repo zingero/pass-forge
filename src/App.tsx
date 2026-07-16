@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Copy, Shield, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Copy, X } from 'lucide-react';
 import { generatePassword as generate, PasswordOptions } from './passwordGenerator';
 
 function App() {
@@ -14,13 +14,13 @@ function App() {
     memorable: false
   });
 
-  const generatePassword = () => {
+  const generatePassword = useCallback(() => {
     setPassword(generate(length, options));
-  };
+  }, [length, options]);
 
   useEffect(() => {
     generatePassword();
-  }, [length, options]);
+  }, [generatePassword]);
 
   const copyToClipboard = async () => {
     if (password && password !== 'Please select at least one option') {
@@ -54,9 +54,11 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <Shield className="mx-auto h-12 w-12 text-emerald-500" />
-          <h1 className="mt-4 text-3xl font-bold">Secure Password Generator</h1>
-          <p className="mt-2 text-gray-400">Generate strong passwords locally in your browser</p>
+          <img src="/logo.svg" alt="PassForge logo" className="mx-auto h-16 w-16 drop-shadow-lg" />
+          <h1 className="mt-4 text-3xl font-bold tracking-tight">
+            <span className="text-emerald-400">Pass</span>Forge
+          </h1>
+          <p className="mt-2 text-gray-400">Forge strong passwords locally in your browser</p>
         </div>
 
         <div className="bg-gray-800 p-6 rounded-lg shadow-xl space-y-6">
