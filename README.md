@@ -14,7 +14,7 @@ A client-side password generator built with React, TypeScript, and Tailwind CSS.
 
 ## Tech Stack
 
-- [React](https://react.dev/) 18
+- [React](https://react.dev/)
 - [TypeScript](https://www.typescriptlang.org/)
 - [Vite](https://vitejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
@@ -41,5 +41,3 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 ## Security
 
 This generator never transmits passwords or entropy data over the network. The Web Crypto API (`crypto.getRandomValues`) provides cryptographically strong random values suitable for password generation.
-
-[Edit in StackBlitz next generation editor ⚡️](https://stackblitz.com/~/github.com/zingero/secure-password-generator)
