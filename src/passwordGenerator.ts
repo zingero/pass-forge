@@ -37,7 +37,7 @@ function getCharsets(options: PasswordOptions) {
 }
 
 export function generateMemorablePassword(length: number, options: PasswordOptions): string {
-  const { uppercase, lowercase, numbers, symbols } = getCharsets(options);
+  const { numbers, symbols } = getCharsets(options);
   let result = '';
 
   const reservedNumbers = options.numbers ? 2 : 0;

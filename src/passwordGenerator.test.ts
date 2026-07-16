@@ -227,7 +227,7 @@ describe('generateMemorablePassword', () => {
       memorable: true,
     };
     const password = generateMemorablePassword(20, options);
-    expect(password).toMatch(/^[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]+$/);
+    expect(password).toMatch(/^[!@#$%^&*()_+\-=[\]{}|;:,.<>?]+$/);
   });
 
   it('excludes similar characters in padding when avoidSimilar is true', () => {
@@ -319,7 +319,7 @@ describe('generateMemorablePassword', () => {
         if (/[A-Z]/.test(password)) hasUpper = true;
         if (/[a-z]/.test(password)) hasLower = true;
         if (/[0-9]/.test(password)) hasDigit = true;
-        if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) hasSymbol = true;
+        if (/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)) hasSymbol = true;
       }
       expect(hasUpper).toBe(true);
       expect(hasLower).toBe(true);
