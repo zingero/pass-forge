@@ -56,10 +56,9 @@ describe('generateRandomPassword', () => {
     expect(password).toMatch(/^[!@#$%^&*()_+\-=[\]{}|;:,.<>?]+$/);
   });
 
-  it('returns error message when no options are selected', () => {
+  it('throws when no options are selected', () => {
     const options: PasswordOptions = { ...defaultOptions, uppercase: false, lowercase: false, numbers: false, symbols: false };
-    const password = generateRandomPassword(16, options);
-    expect(password).toBe('Please select at least one option');
+    expect(() => generateRandomPassword(16, options)).toThrow('Please select at least one option');
   });
 
   it('excludes similar characters when avoidSimilar is true', () => {
@@ -68,6 +67,16 @@ describe('generateRandomPassword', () => {
     for (let i = 0; i < 20; i++) {
       const password = generateRandomPassword(32, options);
       expect(password).not.toMatch(/[Il10O]/);
+    }
+  });
+
+  it('contains at least one character from each enabled class', () => {
+    for (let i = 0; i < 20; i++) {
+      const password = generateRandomPassword(16, defaultOptions);
+      expect(password).toMatch(/[A-Z]/);
+      expect(password).toMatch(/[a-z]/);
+      expect(password).toMatch(/[0-9]/);
+      expect(password).toMatch(/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/);
     }
   });
 });
@@ -99,12 +108,11 @@ describe('generateMemorablePassword', () => {
   });
 
   it('includes symbols when symbols option is enabled', () => {
-    const options: PasswordOptions = { ...defaultOptions, memorable: true };
-    // Use a longer length to ensure there's room for symbols after words and numbers
+    const options: PasswordOptions = { ...defaultOptions, memorable: true, numbers: false };
     let hasSymbols = false;
     for (let i = 0; i < 10; i++) {
       const password = generateMemorablePassword(32, options);
-      if (/[!@#$%^&*]/.test(password)) {
+      if (/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)) {
         hasSymbols = true;
         break;
       }
@@ -213,7 +221,25 @@ describe('generateMemorablePassword', () => {
     const password = generateMemorablePassword(32, options);
     expect(password.length).toBeLessThanOrEqual(32);
     // Words are lowercase, symbols appended, padding is symbols
-    expect(password).toMatch(/^[a-z!@#$%^&*]+$/);
+    expect(password).toMatch(/^[a-z!@#$%^&*()_+\-=[\]{}|;:,.<>?]+$/);
+  });
+
+  it('excludes similar characters in padding when avoidSimilar is true', () => {
+    const options: PasswordOptions = {
+      uppercase: false,
+      lowercase: false,
+      numbers: true,
+      symbols: false,
+      avoidSimilar: true,
+      memorable: true,
+    };
+    for (let i = 0; i < 20; i++) {
+      const password = generateMemorablePassword(32, options);
+      const digits = password.match(/[0-9]/g);
+      if (digits) {
+        expect(digits.join('')).not.toMatch(/[10]/);
+      }
+    }
   });
 });
 

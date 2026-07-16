@@ -9,62 +9,23 @@ export interface PasswordOptions {
   memorable: boolean;
 }
 
-export function generateMemorablePassword(length: number, options: PasswordOptions): string {
-  let result = '';
-  const array = new Uint32Array(50);
-  crypto.getRandomValues(array);
-  let arrayIndex = 0;
+const SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
-  while (result.length < length && arrayIndex < array.length) {
-    const word = commonWords[array[arrayIndex] % commonWords.length];
-    const processedWord = options.uppercase
-      ? word.charAt(0).toUpperCase() + word.slice(1)
-      : word;
-
-    if (result.length + processedWord.length <= length) {
-      result += processedWord;
-      arrayIndex++;
-    } else {
-      break;
-    }
-  }
-
-  const remainingLength = length - result.length;
-
-  if (options.numbers && remainingLength > 0) {
-    const numDigits = Math.min(remainingLength, 2 + (array[arrayIndex] % 2));
-    for (let i = 0; i < numDigits; i++) {
-      result += (array[arrayIndex + i] % 10).toString();
-    }
-    arrayIndex += numDigits;
-  }
-
-  if (options.symbols && result.length < length) {
-    const symbols = '!@#$%^&*';
-    const symbolsToAdd = Math.min(length - result.length, 2);
-    for (let i = 0; i < symbolsToAdd; i++) {
-      result += symbols[array[arrayIndex + i] % symbols.length];
-    }
-  }
-
-  while (result.length < length) {
-    const chars = (options.uppercase ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : '') +
-                 (options.lowercase ? 'abcdefghijklmnopqrstuvwxyz' : '') +
-                 (options.numbers ? '0123456789' : '') +
-                 (options.symbols ? '!@#$%^&*' : '');
-
-    if (chars.length === 0) break;
-    result += chars[array[arrayIndex++] % chars.length];
-  }
-
-  return result;
+function getUnbiasedIndex(max: number): number {
+  const limit = max * Math.floor(0x100000000 / max);
+  const arr = new Uint32Array(1);
+  let value: number;
+  do {
+    crypto.getRandomValues(arr);
+    value = arr[0];
+  } while (value >= limit);
+  return value % max;
 }
 
-export function generateRandomPassword(length: number, options: PasswordOptions): string {
+function getCharsets(options: PasswordOptions) {
   let uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let lowercase = 'abcdefghijklmnopqrstuvwxyz';
   let numbers = '0123456789';
-  const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
   if (options.avoidSimilar) {
     uppercase = uppercase.replace(/[IO]/g, '');
@@ -72,25 +33,97 @@ export function generateRandomPassword(length: number, options: PasswordOptions)
     numbers = numbers.replace(/[10]/g, '');
   }
 
+  return { uppercase, lowercase, numbers, symbols: SYMBOLS };
+}
+
+export function generateMemorablePassword(length: number, options: PasswordOptions): string {
+  const { uppercase, lowercase, numbers, symbols } = getCharsets(options);
+  let result = '';
+
+  const reservedNumbers = options.numbers ? 2 : 0;
+  const reservedSymbols = options.symbols ? 2 : 0;
+  const wordBudget = length - reservedNumbers - reservedSymbols;
+
+  while (result.length < wordBudget) {
+    const word = commonWords[getUnbiasedIndex(commonWords.length)];
+    const processedWord = options.uppercase
+      ? word.charAt(0).toUpperCase() + word.slice(1)
+      : word;
+
+    if (result.length + processedWord.length <= wordBudget) {
+      result += processedWord;
+    } else {
+      break;
+    }
+  }
+
+  if (options.numbers && result.length < length) {
+    const numDigits = Math.min(length - result.length, 2 + getUnbiasedIndex(2));
+    for (let i = 0; i < numDigits; i++) {
+      result += numbers[getUnbiasedIndex(numbers.length)];
+    }
+  }
+
+  if (options.symbols && result.length < length) {
+    const symbolsToAdd = Math.min(length - result.length, 2);
+    for (let i = 0; i < symbolsToAdd; i++) {
+      result += symbols[getUnbiasedIndex(symbols.length)];
+    }
+  }
+
+  while (result.length < length) {
+    let chars = '';
+    if (options.uppercase) chars += uppercase;
+    if (options.lowercase) chars += lowercase;
+    if (options.numbers) chars += numbers;
+    if (options.symbols) chars += symbols;
+
+    if (chars.length === 0) break;
+    result += chars[getUnbiasedIndex(chars.length)];
+  }
+
+  return result;
+}
+
+export function generateRandomPassword(length: number, options: PasswordOptions): string {
+  const { uppercase, lowercase, numbers, symbols } = getCharsets(options);
+
   let chars = '';
-  if (options.uppercase) chars += uppercase;
-  if (options.lowercase) chars += lowercase;
-  if (options.numbers) chars += numbers;
-  if (options.symbols) chars += symbols;
+  const requiredChars: string[] = [];
+
+  if (options.uppercase) {
+    chars += uppercase;
+    requiredChars.push(uppercase[getUnbiasedIndex(uppercase.length)]);
+  }
+  if (options.lowercase) {
+    chars += lowercase;
+    requiredChars.push(lowercase[getUnbiasedIndex(lowercase.length)]);
+  }
+  if (options.numbers) {
+    chars += numbers;
+    requiredChars.push(numbers[getUnbiasedIndex(numbers.length)]);
+  }
+  if (options.symbols) {
+    chars += symbols;
+    requiredChars.push(symbols[getUnbiasedIndex(symbols.length)]);
+  }
 
   if (chars === '') {
-    return 'Please select at least one option';
+    throw new Error('Please select at least one option');
   }
 
-  let generatedPassword = '';
-  const array = new Uint32Array(length);
-  crypto.getRandomValues(array);
-
-  for (let i = 0; i < length; i++) {
-    generatedPassword += chars[array[i] % chars.length];
+  const allChars: string[] = [...requiredChars];
+  for (let i = requiredChars.length; i < length; i++) {
+    allChars.push(chars[getUnbiasedIndex(chars.length)]);
   }
 
-  return generatedPassword;
+  // Fisher-Yates shuffle to distribute required chars randomly
+  for (let i = allChars.length - 1; i > 0; i--) {
+    const j = getUnbiasedIndex(i + 1);
+    [allChars[i], allChars[j]] = [allChars[j], allChars[i]];
+  }
+
+  return allChars.join('');
 }
 
 export function generatePassword(length: number, options: PasswordOptions): string {
