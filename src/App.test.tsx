@@ -93,9 +93,15 @@ describe('App component', () => {
       fireEvent.click(copyButton);
     });
 
+    const svg = copyButton.querySelector('svg');
+    expect(svg).toHaveClass('text-emerald-400');
+
     act(() => {
       vi.advanceTimersByTime(2000);
     });
+
+    const svgAfter = copyButton.querySelector('svg');
+    expect(svgAfter).not.toHaveClass('text-emerald-400');
 
     vi.useRealTimers();
   });

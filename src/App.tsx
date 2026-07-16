@@ -1,7 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Copy, X, Check } from 'lucide-react';
 import { generatePassword as generate, PasswordOptions } from './passwordGenerator';
 import logoSvg from '/logo.svg';
+
+const optionEntries: { key: keyof PasswordOptions; label: string }[] = [
+  { key: 'uppercase', label: 'Uppercase' },
+  { key: 'lowercase', label: 'Lowercase' },
+  { key: 'numbers', label: 'Numbers' },
+  { key: 'symbols', label: 'Symbols' },
+  { key: 'avoidSimilar', label: 'Avoid Similar Characters (1, l, I, 0, O)' },
+  { key: 'memorable', label: 'Generate Memorable Password' },
+];
 
 function App() {
   const [password, setPassword] = useState('');
@@ -17,6 +26,9 @@ function App() {
     memorable: false
   });
 
+  const sliderContainerRef = useRef<HTMLDivElement>(null);
+  const clipboardTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
   const generatePassword = useCallback(() => {
     try {
       setPassword(generate(length, options));
@@ -31,37 +43,44 @@ function App() {
     generatePassword();
   }, [generatePassword]);
 
+  useEffect(() => {
+    const container = sliderContainerRef.current;
+    if (!container) return;
+
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -1 : 1;
+      setLength(prev => Math.min(Math.max(8, prev + delta), 32));
+    };
+
+    container.addEventListener('wheel', handler, { passive: false });
+    return () => container.removeEventListener('wheel', handler);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
+    };
+  }, []);
+
   const copyToClipboard = async () => {
     if (!password) return;
     try {
       await navigator.clipboard.writeText(password);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+
+      if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
+      clipboardTimeoutRef.current = setTimeout(() => {
+        navigator.clipboard.writeText('').catch(() => {});
+      }, 30000);
     } catch {
-      // Clipboard access denied
+      setError('Failed to copy to clipboard');
     }
   };
 
   const clearPassword = () => {
     setPassword('');
-  };
-
-  const getOptionLabel = (key: string) => {
-    switch (key) {
-      case 'avoidSimilar':
-        return 'Avoid Similar Characters (1, l, I, 0, O)';
-      case 'memorable':
-        return 'Generate Memorable Password';
-      default:
-        return key.charAt(0).toUpperCase() + key.slice(1);
-    }
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault(); // Prevent page scrolling
-    const delta = e.deltaY > 0 ? -1 : 1; // Reverse the direction for more intuitive scrolling
-    const newLength = Math.min(Math.max(8, length + delta), 32);
-    setLength(newLength);
   };
 
   return (
@@ -90,6 +109,7 @@ function App() {
                 onClick={clearPassword}
                 className="p-2 hover:bg-gray-600 rounded transition-colors"
                 title="Clear password"
+                aria-label="Clear password"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -98,6 +118,7 @@ function App() {
               onClick={copyToClipboard}
               className="p-2 hover:bg-gray-600 rounded transition-colors"
               title="Copy to clipboard"
+              aria-label="Copy to clipboard"
             >
               {copied ? <Check className="h-5 w-5 text-emerald-400" /> : <Copy className="h-5 w-5" />}
             </button>
@@ -109,14 +130,12 @@ function App() {
 
           <div className="space-y-6">
             <div>
-              <label className="flex justify-between text-sm font-medium mb-2">
+              <label htmlFor="password-length" className="flex justify-between text-sm font-medium mb-2">
                 <span>Password Length: {length}</span>
               </label>
-              <div 
-                className="relative" 
-                onWheel={handleWheel}
-              >
+              <div className="relative" ref={sliderContainerRef}>
                 <input
+                  id="password-length"
                   type="range"
                   min="8"
                   max="32"
@@ -128,11 +147,11 @@ function App() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {Object.entries(options).map(([key, value]) => (
+              {optionEntries.map(({ key, label }) => (
                 <label key={key} className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={value}
+                    checked={options[key]}
                     onChange={(e) => setOptions({ ...options, [key]: e.target.checked })}
                     className="sr-only peer"
                   />
@@ -143,7 +162,7 @@ function App() {
                     after:rounded-full after:h-5 after:w-5 after:transition-all 
                     peer-checked:bg-emerald-500"></div>
                   <span className="ms-3 text-sm font-medium">
-                    {getOptionLabel(key)}
+                    {label}
                   </span>
                 </label>
               ))}
