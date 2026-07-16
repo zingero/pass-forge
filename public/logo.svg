@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Outer shield shape -->
+  <path d="M60 8L16 28v32c0 28 18.7 54.2 44 60 25.3-5.8 44-32 44-60V28L60 8z" 
+        fill="url(#shieldGrad)" stroke="url(#strokeGrad)" stroke-width="2"/>
+  
+  <!-- Inner glow -->
+  <path d="M60 16L24 33v25c0 23.5 15.3 45.5 36 50.4 20.7-4.9 36-26.9 36-50.4V33L60 16z" 
+        fill="url(#innerGrad)" opacity="0.3"/>
+  
+  <!-- Key symbol -->
+  <circle cx="60" cy="48" r="12" stroke="#10b981" stroke-width="3" fill="none"/>
+  <circle cx="60" cy="48" r="5" fill="#10b981"/>
+  <rect x="58" y="58" width="4" height="20" rx="2" fill="#10b981"/>
+  <rect x="62" y="66" width="8" height="3" rx="1.5" fill="#10b981"/>
+  <rect x="62" y="72" width="6" height="3" rx="1.5" fill="#10b981"/>
+  
+  <!-- Sparkle accents -->
+  <circle cx="38" cy="38" r="2" fill="#34d399" opacity="0.8"/>
+  <circle cx="82" cy="38" r="1.5" fill="#6ee7b7" opacity="0.6"/>
+  <circle cx="44" cy="70" r="1.5" fill="#34d399" opacity="0.5"/>
+  <circle cx="76" cy="70" r="1" fill="#6ee7b7" opacity="0.4"/>
+  
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="shieldGrad" x1="16" y1="8" x2="104" y2="120">
+      <stop offset="0%" stop-color="#064e3b"/>
+      <stop offset="100%" stop-color="#1f2937"/>
+    </linearGradient>
+    <linearGradient id="strokeGrad" x1="16" y1="8" x2="104" y2="120">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <radialGradient id="innerGrad" cx="60" cy="50" r="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#064e3b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>
