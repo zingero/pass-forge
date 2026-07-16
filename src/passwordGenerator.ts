@@ -46,7 +46,11 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
 
   if (options.uppercase || options.lowercase) {
     while (result.length < wordBudget) {
-      const word = commonWords[getUnbiasedIndex(commonWords.length)];
+      const remaining = wordBudget - result.length;
+      const candidates = commonWords.filter(w => w.length <= remaining);
+      if (candidates.length === 0) break;
+
+      const word = candidates[getUnbiasedIndex(candidates.length)];
       let processedWord: string;
       if (options.uppercase && !options.lowercase) {
         processedWord = word.toUpperCase();
@@ -56,11 +60,7 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
         processedWord = word;
       }
 
-      if (result.length + processedWord.length <= wordBudget) {
-        result += processedWord;
-      } else {
-        break;
-      }
+      result += processedWord;
     }
   }
 
@@ -76,17 +76,6 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
     for (let i = 0; i < symbolsToAdd; i++) {
       result += symbols[getUnbiasedIndex(symbols.length)];
     }
-  }
-
-  while (result.length < length) {
-    let chars = '';
-    if (options.uppercase) chars += uppercase;
-    if (options.lowercase) chars += lowercase;
-    if (options.numbers) chars += numbers;
-    if (options.symbols) chars += symbols;
-
-    if (chars.length === 0) break;
-    result += chars[getUnbiasedIndex(chars.length)];
   }
 
   return result;
