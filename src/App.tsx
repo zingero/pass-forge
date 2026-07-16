@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Copy, X, Check } from 'lucide-react';
 import { generatePassword as generate, PasswordOptions } from './passwordGenerator';
+import logoSvg from '/logo.svg';
 
 function App() {
   const [password, setPassword] = useState('');
@@ -67,7 +68,7 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <img src="/logo.svg" alt="PassForge logo" className="mx-auto h-16 w-16 drop-shadow-lg" />
+          <img src={logoSvg} alt="PassForge logo" className="mx-auto h-16 w-16 drop-shadow-lg" />
           <h1 className="mt-4 text-3xl font-bold tracking-tight">
             <span className="text-emerald-400">Pass</span>Forge
           </h1>
