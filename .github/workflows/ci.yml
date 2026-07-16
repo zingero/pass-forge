@@ -17,7 +17,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm run test:coverage
-      - name: Check coverage threshold
-        run: |
-          npx vitest run --coverage --coverage.thresholds.statements=95 --coverage.thresholds.branches=95 --coverage.thresholds.functions=95 --coverage.thresholds.lines=95
+      - name: Run tests with coverage
+        run: npx vitest run --coverage --coverage.thresholds.statements=95 --coverage.thresholds.branches=95 --coverage.thresholds.functions=95 --coverage.thresholds.lines=95
