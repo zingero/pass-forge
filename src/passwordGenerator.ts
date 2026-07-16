@@ -44,16 +44,23 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
   const reservedSymbols = options.symbols ? 2 : 0;
   const wordBudget = length - reservedNumbers - reservedSymbols;
 
-  while (result.length < wordBudget) {
-    const word = commonWords[getUnbiasedIndex(commonWords.length)];
-    const processedWord = options.uppercase
-      ? word.charAt(0).toUpperCase() + word.slice(1)
-      : word;
+  if (options.uppercase || options.lowercase) {
+    while (result.length < wordBudget) {
+      const word = commonWords[getUnbiasedIndex(commonWords.length)];
+      let processedWord: string;
+      if (options.uppercase && !options.lowercase) {
+        processedWord = word.toUpperCase();
+      } else if (options.uppercase) {
+        processedWord = word.charAt(0).toUpperCase() + word.slice(1);
+      } else {
+        processedWord = word;
+      }
 
-    if (result.length + processedWord.length <= wordBudget) {
-      result += processedWord;
-    } else {
-      break;
+      if (result.length + processedWord.length <= wordBudget) {
+        result += processedWord;
+      } else {
+        break;
+      }
     }
   }
 

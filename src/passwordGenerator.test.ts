@@ -149,6 +149,21 @@ describe('generateMemorablePassword', () => {
     expect(password.length).toBeLessThanOrEqual(32);
   });
 
+  it('does not contain lowercase letters when lowercase is disabled', () => {
+    const options: PasswordOptions = {
+      uppercase: true,
+      lowercase: false,
+      numbers: true,
+      symbols: true,
+      avoidSimilar: false,
+      memorable: true,
+    };
+    for (let i = 0; i < 10; i++) {
+      const password = generateMemorablePassword(20, options);
+      expect(password).not.toMatch(/[a-z]/);
+    }
+  });
+
   it('pads with uppercase and lowercase characters when both are enabled', () => {
     const options: PasswordOptions = {
       uppercase: true,
@@ -176,8 +191,8 @@ describe('generateMemorablePassword', () => {
     // Use length 32 to force padding after words
     const password = generateMemorablePassword(32, options);
     expect(password.length).toBeLessThanOrEqual(32);
-    // Padded chars should be uppercase only (words are capitalized too)
-    expect(password).toMatch(/^[A-Za-z]+$/);
+    // Words and padding should be uppercase only
+    expect(password).toMatch(/^[A-Z]+$/);
   });
 
   it('pads with only lowercase characters when only lowercase is enabled', () => {
@@ -205,8 +220,8 @@ describe('generateMemorablePassword', () => {
     };
     const password = generateMemorablePassword(32, options);
     expect(password.length).toBeLessThanOrEqual(32);
-    // Words are lowercase (uppercase disabled), padding + numbers appended are digits
-    expect(password).toMatch(/^[a-z0-9]+$/);
+    // No letters enabled, so only numbers should appear
+    expect(password).toMatch(/^[0-9]+$/);
   });
 
   it('pads with only symbols when only symbols is enabled', () => {
@@ -220,8 +235,8 @@ describe('generateMemorablePassword', () => {
     };
     const password = generateMemorablePassword(32, options);
     expect(password.length).toBeLessThanOrEqual(32);
-    // Words are lowercase, symbols appended, padding is symbols
-    expect(password).toMatch(/^[a-z!@#$%^&*()_+\-=[\]{}|;:,.<>?]+$/);
+    // No letters enabled, so only symbols should appear
+    expect(password).toMatch(/^[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]+$/);
   });
 
   it('excludes similar characters in padding when avoidSimilar is true', () => {
@@ -240,6 +255,97 @@ describe('generateMemorablePassword', () => {
         expect(digits.join('')).not.toMatch(/[10]/);
       }
     }
+  });
+
+  describe('respects character class options in all combinations', () => {
+    it('uppercase + numbers: no lowercase or symbols', () => {
+      const options: PasswordOptions = {
+        uppercase: true, lowercase: false, numbers: true, symbols: false,
+        avoidSimilar: false, memorable: true,
+      };
+      for (let i = 0; i < 10; i++) {
+        const password = generateMemorablePassword(20, options);
+        expect(password).not.toMatch(/[a-z]/);
+        expect(password).toMatch(/^[A-Z0-9]+$/);
+      }
+    });
+
+    it('uppercase + symbols: no lowercase or numbers', () => {
+      const options: PasswordOptions = {
+        uppercase: true, lowercase: false, numbers: false, symbols: true,
+        avoidSimilar: false, memorable: true,
+      };
+      for (let i = 0; i < 10; i++) {
+        const password = generateMemorablePassword(20, options);
+        expect(password).not.toMatch(/[a-z]/);
+        expect(password).not.toMatch(/[0-9]/);
+      }
+    });
+
+    it('lowercase + numbers: no uppercase or symbols', () => {
+      const options: PasswordOptions = {
+        uppercase: false, lowercase: true, numbers: true, symbols: false,
+        avoidSimilar: false, memorable: true,
+      };
+      for (let i = 0; i < 10; i++) {
+        const password = generateMemorablePassword(20, options);
+        expect(password).not.toMatch(/[A-Z]/);
+        expect(password).toMatch(/^[a-z0-9]+$/);
+      }
+    });
+
+    it('lowercase + symbols: no uppercase or numbers', () => {
+      const options: PasswordOptions = {
+        uppercase: false, lowercase: true, numbers: false, symbols: true,
+        avoidSimilar: false, memorable: true,
+      };
+      for (let i = 0; i < 10; i++) {
+        const password = generateMemorablePassword(20, options);
+        expect(password).not.toMatch(/[A-Z]/);
+        expect(password).not.toMatch(/[0-9]/);
+      }
+    });
+
+    it('numbers + symbols only: no letters at all', () => {
+      const options: PasswordOptions = {
+        uppercase: false, lowercase: false, numbers: true, symbols: true,
+        avoidSimilar: false, memorable: true,
+      };
+      for (let i = 0; i < 10; i++) {
+        const password = generateMemorablePassword(20, options);
+        expect(password).not.toMatch(/[a-zA-Z]/);
+      }
+    });
+
+    it('all four enabled: contains all character classes', () => {
+      const options: PasswordOptions = {
+        uppercase: true, lowercase: true, numbers: true, symbols: true,
+        avoidSimilar: false, memorable: true,
+      };
+      let hasUpper = false, hasLower = false, hasDigit = false, hasSymbol = false;
+      for (let i = 0; i < 20; i++) {
+        const password = generateMemorablePassword(24, options);
+        if (/[A-Z]/.test(password)) hasUpper = true;
+        if (/[a-z]/.test(password)) hasLower = true;
+        if (/[0-9]/.test(password)) hasDigit = true;
+        if (/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) hasSymbol = true;
+      }
+      expect(hasUpper).toBe(true);
+      expect(hasLower).toBe(true);
+      expect(hasDigit).toBe(true);
+      expect(hasSymbol).toBe(true);
+    });
+
+    it('uppercase + lowercase only: no numbers or symbols', () => {
+      const options: PasswordOptions = {
+        uppercase: true, lowercase: true, numbers: false, symbols: false,
+        avoidSimilar: false, memorable: true,
+      };
+      for (let i = 0; i < 10; i++) {
+        const password = generateMemorablePassword(20, options);
+        expect(password).toMatch(/^[A-Za-z]+$/);
+      }
+    });
   });
 });
 
