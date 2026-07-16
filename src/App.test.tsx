@@ -180,4 +180,92 @@ describe('App component', () => {
     const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
     expect(input.value).toBe('');
   });
+
+  it('shows error when clipboard write fails', async () => {
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to copy to clipboard');
+  });
+
+  it('clears clipboard after 30 seconds', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    expect(writeText).toHaveBeenLastCalledWith('');
+    vi.useRealTimers();
+  });
+
+  it('clears previous clipboard timeout when copying again', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    // Copy again before 30s to trigger clearTimeout branch
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    // Only one clipboard clear should fire at 30s from second copy
+    writeText.mockClear();
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    // The clipboard clear from second copy fires
+    expect(writeText).toHaveBeenCalledWith('');
+    expect(writeText).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('handles clipboard clear failure silently', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn()
+      .mockResolvedValueOnce(undefined) // copy succeeds
+      .mockRejectedValueOnce(new Error('clear failed')); // 30s clear fails
+
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    // Should not throw when clipboard clear fails
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    expect(writeText).toHaveBeenLastCalledWith('');
+    vi.useRealTimers();
+  });
 });

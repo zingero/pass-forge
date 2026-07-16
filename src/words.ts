@@ -1,5 +1,8 @@
 // Common memorable words for password generation
 export const commonWords = [
+  // Short words (2 letters)
+  'up', 'go', 'do', 'no', 'so', 'on', 'in', 'it', 'if', 'ox',
+  'ax', 'my', 'by', 'hi', 'oh',
   // Animals
   'dog', 'cat', 'bird', 'fish', 'lion', 'bear', 'wolf', 'deer', 'frog', 'duck',
   'horse', 'eagle', 'shark', 'whale', 'tiger', 'snake', 'mouse', 'rabbit', 'fox', 'owl',

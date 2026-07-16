@@ -62,6 +62,16 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
 
       result += processedWord;
     }
+
+    // Pad remaining characters with random letters if words couldn't fill the budget
+    const { uppercase, lowercase } = getCharsets(options);
+    while (result.length < wordBudget) {
+      let chars = '';
+      if (options.uppercase) chars += uppercase;
+      if (options.lowercase) chars += lowercase;
+      if (chars.length === 0) break;
+      result += chars[getUnbiasedIndex(chars.length)];
+    }
   }
 
   if (options.numbers && result.length < length) {

@@ -353,4 +353,9 @@ describe('generatePassword', () => {
     expect(password.length).toBeLessThanOrEqual(20);
     expect(password.length).toBeGreaterThan(0);
   });
+
+  it('throws when length is too short for the selected options', () => {
+    const options: PasswordOptions = { ...defaultOptions, memorable: false };
+    expect(() => generateRandomPassword(2, options)).toThrow('Password length is too short for the selected options');
+  });
 });
