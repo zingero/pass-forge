@@ -354,6 +354,23 @@ describe('generatePassword', () => {
     expect(password.length).toBeGreaterThan(0);
   });
 
+  it('pads with random letters when words cannot fill budget exactly', () => {
+    // With numbers + symbols, wordBudget = length - 4. Use length=5 → wordBudget=1.
+    // No words have length 1, so the word loop exits immediately and padding fills the gap.
+    const options: PasswordOptions = { ...defaultOptions, memorable: true };
+    const password = generateMemorablePassword(5, options);
+    expect(password.length).toBe(5);
+    expect(password).toMatch(/[A-Za-z]/); // padding produces a letter
+  });
+
+  it('pads memorable password when only numbers remain unfillable by words', () => {
+    // wordBudget=2 (length=6), words of length 2 exist, but test wordBudget=1 with no symbols
+    // length=3, numbers only reserved → wordBudget = 3 - 2 - 0 = 1
+    const options: PasswordOptions = { ...defaultOptions, memorable: true, symbols: false };
+    const password = generateMemorablePassword(3, options);
+    expect(password.length).toBe(3);
+  });
+
   it('throws when length is too short for the selected options', () => {
     const options: PasswordOptions = { ...defaultOptions, memorable: false };
     expect(() => generateRandomPassword(2, options)).toThrow('Password length is too short for the selected options');

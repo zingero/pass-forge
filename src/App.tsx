@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Copy, X, Check } from 'lucide-react';
+import { Copy, X, Check, Eye, EyeOff } from 'lucide-react';
 import { generatePassword as generate, PasswordOptions } from './passwordGenerator';
 import logoSvg from '/logo.svg';
+
+const CLIPBOARD_CLEAR_DELAY_SEC = 30;
 
 const optionEntries: { key: keyof PasswordOptions; label: string }[] = [
   { key: 'uppercase', label: 'Uppercase' },
@@ -9,7 +11,7 @@ const optionEntries: { key: keyof PasswordOptions; label: string }[] = [
   { key: 'numbers', label: 'Numbers' },
   { key: 'symbols', label: 'Symbols' },
   { key: 'avoidSimilar', label: 'Avoid Similar Characters (1, l, I, 0, O)' },
-  { key: 'memorable', label: 'Generate Memorable Password' },
+  { key: 'memorable', label: 'Memorable' },
 ];
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [length, setLength] = useState(16);
+  const [showPassword, setShowPassword] = useState(true);
+  const [clipboardCountdown, setClipboardCountdown] = useState<number | null>(null);
   const [options, setOptions] = useState<PasswordOptions>({
     uppercase: true,
     lowercase: true,
@@ -28,6 +32,7 @@ function App() {
 
   const sliderContainerRef = useRef<HTMLDivElement>(null);
   const clipboardTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
   const generatePassword = useCallback(() => {
     try {
@@ -60,7 +65,19 @@ function App() {
   useEffect(() => {
     return () => {
       if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
+  }, []);
+
+  const clearClipboard = useCallback(() => {
+    navigator.clipboard.writeText('').catch(() => {
+      // If clearing fails (e.g. page not focused), retry on next focus
+      const onFocus = () => {
+        navigator.clipboard.writeText('').catch(() => {});
+        window.removeEventListener('focus', onFocus);
+      };
+      window.addEventListener('focus', onFocus);
+    });
   }, []);
 
   const copyToClipboard = async () => {
@@ -68,12 +85,26 @@ function App() {
     try {
       await navigator.clipboard.writeText(password);
       setCopied(true);
+      setShowPassword(false);
       setTimeout(() => setCopied(false), 2000);
 
       if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+
+      setClipboardCountdown(CLIPBOARD_CLEAR_DELAY_SEC);
+      countdownIntervalRef.current = setInterval(() => {
+        setClipboardCountdown(prev => {
+          if (prev === null || prev <= 1) {
+            clearInterval(countdownIntervalRef.current);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
       clipboardTimeoutRef.current = setTimeout(() => {
-        navigator.clipboard.writeText('').catch(() => {});
-      }, 30000);
+        clearClipboard();
+      }, CLIPBOARD_CLEAR_DELAY_SEC * 1000);
     } catch {
       setError('Failed to copy to clipboard');
     }
@@ -85,7 +116,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-lg w-full space-y-8">
         <div className="text-center">
           <img src={logoSvg} alt="PassForge logo" className="mx-auto h-16 w-16 drop-shadow-lg" />
           <h1 className="mt-4 text-3xl font-bold tracking-tight">
@@ -97,13 +128,23 @@ function App() {
         <div className="bg-gray-800 p-6 rounded-lg shadow-xl space-y-6">
           <div className="flex items-center gap-2 bg-gray-700 p-3 rounded">
             <input
-              type="text"
+              type={showPassword ? 'text' : 'password'}
               value={password}
               readOnly
               aria-label="Generated password"
               className="flex-1 bg-transparent outline-none"
               placeholder="Generated password will appear here"
             />
+            {password && (
+              <button
+                onClick={() => setShowPassword(!showPassword)}
+                className="p-2 hover:bg-gray-600 rounded transition-colors"
+                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            )}
             {password && (
               <button
                 onClick={clearPassword}
@@ -123,6 +164,12 @@ function App() {
               {copied ? <Check className="h-5 w-5 text-emerald-400" /> : <Copy className="h-5 w-5" />}
             </button>
           </div>
+
+          {clipboardCountdown !== null && (
+            <p className="text-xs text-gray-400">
+              Clipboard will be cleared in {clipboardCountdown}s
+            </p>
+          )}
 
           {error && (
             <p className="text-red-400 text-sm" role="alert">{error}</p>

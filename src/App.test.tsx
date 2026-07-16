@@ -61,7 +61,7 @@ describe('App component', () => {
     expect(screen.getByText('Numbers')).toBeInTheDocument();
     expect(screen.getByText('Symbols')).toBeInTheDocument();
     expect(screen.getByText('Avoid Similar Characters (1, l, I, 0, O)')).toBeInTheDocument();
-    expect(screen.getByText('Generate Memorable Password')).toBeInTheDocument();
+    expect(screen.getByText('Memorable')).toBeInTheDocument();
   });
 
   it('clears the password when clear button is clicked', () => {
@@ -266,6 +266,158 @@ describe('App component', () => {
     });
 
     expect(writeText).toHaveBeenLastCalledWith('');
+    vi.useRealTimers();
+  });
+
+  it('hides password after copying', async () => {
+    render(<App />);
+    const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
+    expect(input.type).toBe('text');
+
+    const copyButton = screen.getByTitle('Copy to clipboard');
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    expect(input.type).toBe('password');
+  });
+
+  it('toggles password visibility with show/hide button', () => {
+    render(<App />);
+    const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
+    expect(input.type).toBe('text');
+
+    const hideButton = screen.getByTitle('Hide password');
+    fireEvent.click(hideButton);
+    expect(input.type).toBe('password');
+
+    const showButton = screen.getByTitle('Show password');
+    fireEvent.click(showButton);
+    expect(input.type).toBe('text');
+  });
+
+  it('shows clipboard countdown after copying', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    expect(screen.getByText('Clipboard will be cleared in 30s')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(screen.getByText('Clipboard will be cleared in 25s')).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('countdown disappears when it reaches zero', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    expect(screen.getByText(/Clipboard will be cleared in/)).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    expect(screen.queryByText(/Clipboard will be cleared in/)).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('resets countdown when copying again', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+
+    expect(screen.getByText('Clipboard will be cleared in 20s')).toBeInTheDocument();
+
+    // Copy again - should reset to 30
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    expect(screen.getByText('Clipboard will be cleared in 30s')).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('does not show show/hide button when password is empty', () => {
+    render(<App />);
+    const clearButton = screen.getByTitle('Clear password');
+    fireEvent.click(clearButton);
+
+    expect(screen.queryByTitle('Hide password')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Show password')).not.toBeInTheDocument();
+  });
+
+  it('retries clipboard clear on focus when initial clear fails', async () => {
+    vi.useFakeTimers();
+    let focusHandler: (() => void) | null = null;
+    const addEventSpy = vi.spyOn(window, 'addEventListener').mockImplementation((event, handler) => {
+      if (event === 'focus') focusHandler = handler as () => void;
+    });
+    const removeEventSpy = vi.spyOn(window, 'removeEventListener');
+
+    const writeText = vi.fn()
+      .mockResolvedValueOnce(undefined) // copy succeeds
+      .mockRejectedValueOnce(new Error('not focused')) // 30s clear fails
+      .mockResolvedValueOnce(undefined); // focus retry succeeds
+
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    // Focus handler should have been registered
+    expect(focusHandler).not.toBeNull();
+
+    // Simulate focus event
+    await act(async () => {
+      focusHandler!();
+    });
+
+    expect(writeText).toHaveBeenLastCalledWith('');
+    expect(removeEventSpy).toHaveBeenCalledWith('focus', focusHandler);
+
+    addEventSpy.mockRestore();
+    removeEventSpy.mockRestore();
     vi.useRealTimers();
   });
 });
