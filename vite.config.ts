@@ -4,7 +4,7 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/secure-password-generator/',
+  base: '/pass-forge/',
   plugins: [react()],
   resolve: {
     alias: {

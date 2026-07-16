@@ -1,4 +1,4 @@
-# Secure Password Generator
+# Pass Forge
 
 A client-side password generator built with React, TypeScript, and Tailwind CSS. All passwords are generated locally in the browser using the Web Crypto API — no data is ever sent to a server.
 
