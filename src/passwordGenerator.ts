@@ -47,7 +47,7 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
   if (options.uppercase || options.lowercase) {
     while (result.length < wordBudget) {
       const remaining = wordBudget - result.length;
-      const candidates = commonWords.filter(w => w.length <= remaining);
+      const candidates = commonWords.filter(w => w.length <= remaining && remaining - w.length !== 1);
       if (candidates.length === 0) break;
 
       const word = candidates[getUnbiasedIndex(candidates.length)];
