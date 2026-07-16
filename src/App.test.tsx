@@ -1,12 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import App from './App';
 
 describe('App component', () => {
+  const originalClipboard = navigator.clipboard;
+
   beforeEach(() => {
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
+  });
+
+  afterEach(() => {
+    Object.assign(navigator, { clipboard: originalClipboard });
   });
 
   it('renders the heading', () => {
@@ -76,6 +82,22 @@ describe('App component', () => {
     fireEvent.click(copyButton);
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(input.value);
+  });
+
+  it('shows copied feedback and resets after timeout', async () => {
+    vi.useFakeTimers();
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    vi.useRealTimers();
   });
 
   it('does not copy when password is empty', () => {
@@ -148,7 +170,8 @@ describe('App component', () => {
     fireEvent.click(checkboxes[2]); // numbers
     fireEvent.click(checkboxes[3]); // symbols
 
+    expect(screen.getByRole('alert')).toHaveTextContent('Please select at least one option');
     const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
-    expect(input.value).toBe('Please select at least one option');
+    expect(input.value).toBe('');
   });
 });

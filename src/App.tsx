@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Copy, X } from 'lucide-react';
+import { Copy, X, Check } from 'lucide-react';
 import { generatePassword as generate, PasswordOptions } from './passwordGenerator';
 
 function App() {
   const [password, setPassword] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [length, setLength] = useState(16);
   const [options, setOptions] = useState<PasswordOptions>({
     uppercase: true,
@@ -15,7 +17,13 @@ function App() {
   });
 
   const generatePassword = useCallback(() => {
-    setPassword(generate(length, options));
+    try {
+      setPassword(generate(length, options));
+      setError(null);
+    } catch (e) {
+      setPassword('');
+      setError((e as Error).message);
+    }
   }, [length, options]);
 
   useEffect(() => {
@@ -23,8 +31,13 @@ function App() {
   }, [generatePassword]);
 
   const copyToClipboard = async () => {
-    if (password && password !== 'Please select at least one option') {
+    if (!password) return;
+    try {
       await navigator.clipboard.writeText(password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access denied
     }
   };
 
@@ -67,6 +80,7 @@ function App() {
               type="text"
               value={password}
               readOnly
+              aria-label="Generated password"
               className="flex-1 bg-transparent outline-none"
               placeholder="Generated password will appear here"
             />
@@ -84,9 +98,13 @@ function App() {
               className="p-2 hover:bg-gray-600 rounded transition-colors"
               title="Copy to clipboard"
             >
-              <Copy className="h-5 w-5" />
+              {copied ? <Check className="h-5 w-5 text-emerald-400" /> : <Copy className="h-5 w-5" />}
             </button>
           </div>
+
+          {error && (
+            <p className="text-red-400 text-sm" role="alert">{error}</p>
+          )}
 
           <div className="space-y-6">
             <div>
@@ -133,7 +151,7 @@ function App() {
 
           <button
             onClick={generatePassword}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
             Generate New Password
           </button>
