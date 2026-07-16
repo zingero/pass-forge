@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateRandomPassword, generateMemorablePassword, generatePassword, PasswordOptions, MIN_LENGTH, MAX_LENGTH } from './passwordGenerator';
+import { generateRandomPassword, generateMemorablePassword, generatePassword, calculateEntropy, getPasswordStrength, PasswordOptions, MIN_LENGTH, MAX_LENGTH } from './passwordGenerator';
 
 const defaultOptions: PasswordOptions = {
   uppercase: true,
@@ -380,8 +380,144 @@ describe('generatePassword', () => {
     expect(password.length).toBe(3);
   });
 
+  it('pads with uppercase only when lowercase is disabled', () => {
+    // length=5, numbers+symbols → wordBudget=1, no word of length 1 exists
+    // padding loop uses only uppercase charset
+    const options: PasswordOptions = {
+      uppercase: true, lowercase: false, numbers: true, symbols: true,
+      avoidSimilar: false, memorable: true,
+    };
+    const password = generateMemorablePassword(5, options);
+    expect(password.length).toBe(5);
+    expect(password).not.toMatch(/[a-z]/);
+  });
+
+  it('pads with lowercase only when uppercase is disabled', () => {
+    const options: PasswordOptions = {
+      uppercase: false, lowercase: true, numbers: true, symbols: true,
+      avoidSimilar: false, memorable: true,
+    };
+    const password = generateMemorablePassword(5, options);
+    expect(password.length).toBe(5);
+    expect(password).not.toMatch(/[A-Z]/);
+  });
+
   it('throws when length is too short for the selected options', () => {
     const options: PasswordOptions = { ...defaultOptions, memorable: false };
     expect(() => generateRandomPassword(2, options)).toThrow('Password length is too short for the selected options');
+  });
+});
+
+describe('calculateEntropy', () => {
+  it('returns 0 for an empty string', () => {
+    expect(calculateEntropy('')).toBe(0);
+  });
+
+  it('calculates entropy for lowercase-only password', () => {
+    const entropy = calculateEntropy('abcdefgh');
+    // 8 chars * log2(26) ≈ 37.6
+    expect(entropy).toBeCloseTo(8 * Math.log2(26), 1);
+  });
+
+  it('calculates entropy for mixed case password', () => {
+    const entropy = calculateEntropy('AbCdEfGh');
+    // 8 chars * log2(52) ≈ 45.6
+    expect(entropy).toBeCloseTo(8 * Math.log2(52), 1);
+  });
+
+  it('calculates entropy for all character classes', () => {
+    const entropy = calculateEntropy('Ab1!');
+    // 4 chars * log2(95) ≈ 26.3
+    expect(entropy).toBeCloseTo(4 * Math.log2(95), 1);
+  });
+
+  it('accounts for digits in pool size', () => {
+    const entropy = calculateEntropy('12345678');
+    // 8 chars * log2(10) ≈ 26.6
+    expect(entropy).toBeCloseTo(8 * Math.log2(10), 1);
+  });
+});
+
+describe('getPasswordStrength', () => {
+  it('returns pathetic for very short passwords', () => {
+    const result = getPasswordStrength('ab');
+    expect(result.level).toBe('pathetic');
+    expect(result.entropy).toBeLessThan(20);
+  });
+
+  it('returns weak for short low-entropy passwords', () => {
+    // 5 chars * log2(26) ≈ 23.5 → weak (20-35)
+    const result = getPasswordStrength('abcde');
+    expect(result.level).toBe('weak');
+  });
+
+  it('returns meh for slightly better passwords', () => {
+    // 8 chars * log2(26) ≈ 37.6 → meh (35-45)
+    const result = getPasswordStrength('abcdefgh');
+    expect(result.level).toBe('meh');
+  });
+
+  it('returns fair for moderate passwords', () => {
+    // 11 chars * log2(26) ≈ 51.7 → fair (45-55)
+    const result = getPasswordStrength('abcdefghijk');
+    expect(result.level).toBe('fair');
+  });
+
+  it('returns decent for good-ish passwords', () => {
+    // 10 chars * log2(62) ≈ 59.5 → decent (55-65)
+    const result = getPasswordStrength('Abcdefg123');
+    expect(result.level).toBe('decent');
+  });
+
+  it('returns solid for pretty good passwords', () => {
+    // 11 chars * log2(62) ≈ 65.5 → solid (65-75)
+    const result = getPasswordStrength('Abcdefgh123');
+    expect(result.level).toBe('solid');
+  });
+
+  it('returns strong for strong passwords', () => {
+    // 12 chars * log2(95) ≈ 78.8 → strong (75-85)
+    const result = getPasswordStrength('Abcdef1234!@');
+    expect(result.level).toBe('strong');
+  });
+
+  it('returns fortress for very strong passwords', () => {
+    // 14 chars * log2(95) ≈ 92 → fortress (85-100)
+    const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh');
+    expect(result.level).toBe('fortress');
+  });
+
+  it('returns unbreakable for extremely strong passwords', () => {
+    // 16 chars * log2(95) ≈ 105 → unbreakable (100-120)
+    const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh4$');
+    expect(result.level).toBe('unbreakable');
+  });
+
+  it('returns overkill for ridiculously long complex passwords', () => {
+    // 20 chars * log2(95) ≈ 131 → overkill (120+)
+    const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh4$Jk5&');
+    expect(result.level).toBe('overkill');
+  });
+
+  it('includes a crack time string', () => {
+    const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh4$');
+    expect(result.crackTime).toBeTruthy();
+    expect(typeof result.crackTime).toBe('string');
+  });
+
+  it('returns instant for very weak passwords', () => {
+    const result = getPasswordStrength('a');
+    expect(result.crackTime).toBe('Instant');
+  });
+
+  it('calculates lower entropy for memorable passwords', () => {
+    const memorableOptions: PasswordOptions = {
+      uppercase: true, lowercase: true, numbers: true, symbols: true,
+      avoidSimilar: false, memorable: true,
+    };
+    const password = 'TigerMaple72!@';
+    const randomEntropy = calculateEntropy(password);
+    const memorableEntropy = calculateEntropy(password, memorableOptions);
+    expect(memorableEntropy).toBeLessThan(randomEntropy);
   });
 });

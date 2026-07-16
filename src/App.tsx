@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Copy, X, Check, Eye, EyeOff } from 'lucide-react';
-import { generatePassword as generate, PasswordOptions, MIN_LENGTH, MAX_LENGTH } from './passwordGenerator';
+import { generatePassword as generate, getPasswordStrength, PasswordOptions, PasswordStrength, MIN_LENGTH, MAX_LENGTH } from './passwordGenerator';
 import logoSvg from '/logo.svg';
 
-const CLIPBOARD_CLEAR_DELAY_SEC = 3;
+const CLIPBOARD_CLEAR_DELAY_SEC = 10;
 
 const optionEntries: { key: keyof PasswordOptions; label: string }[] = [
   { key: 'uppercase', label: 'Uppercase' },
@@ -16,6 +16,7 @@ const optionEntries: { key: keyof PasswordOptions; label: string }[] = [
 
 function App() {
   const [password, setPassword] = useState('');
+  const [strength, setStrength] = useState<PasswordStrength | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [length, setLength] = useState(16);
@@ -38,11 +39,14 @@ function App() {
 
   const generatePassword = useCallback(() => {
     try {
-      setPassword(generate(length, options));
+      const newPassword = generate(length, options);
+      setPassword(newPassword);
+      setStrength(getPasswordStrength(newPassword, options));
       setError(null);
       setShowPassword(true);
     } catch (e) {
       setPassword('');
+      setStrength(null);
       setError((e as Error).message);
     }
   }, [length, options]);
@@ -137,6 +141,7 @@ function App() {
 
   const clearPassword = () => {
     setPassword('');
+    setStrength(null);
     if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     setClipboardCountdown(null);
@@ -208,6 +213,58 @@ function App() {
 
           {error && (
             <p className="text-red-400 text-sm" role="alert">{error}</p>
+          )}
+
+          {strength && password && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">
+                  Strength:{' '}
+                  <span className={
+                    strength.level === 'pathetic' ? 'text-red-500' :
+                    strength.level === 'weak' ? 'text-red-400' :
+                    strength.level === 'meh' ? 'text-orange-400' :
+                    strength.level === 'fair' ? 'text-amber-400' :
+                    strength.level === 'decent' ? 'text-yellow-300' :
+                    strength.level === 'solid' ? 'text-lime-400' :
+                    strength.level === 'strong' ? 'text-emerald-400' :
+                    strength.level === 'fortress' ? 'text-cyan-400' :
+                    strength.level === 'unbreakable' ? 'text-blue-400' :
+                    'text-purple-400'
+                  }>
+                    {{
+                      pathetic: 'Pathetic',
+                      weak: 'Weak',
+                      meh: 'Meh',
+                      fair: 'Fair',
+                      decent: 'Decent',
+                      solid: 'Solid',
+                      strong: 'Strong',
+                      fortress: 'Fortress',
+                      unbreakable: 'Unbreakable',
+                      overkill: 'Overkill',
+                    }[strength.level]}
+                  </span>
+              </div>
+              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    strength.level === 'pathetic' ? 'bg-red-500 w-[10%]' :
+                    strength.level === 'weak' ? 'bg-red-400 w-[20%]' :
+                    strength.level === 'meh' ? 'bg-orange-400 w-[30%]' :
+                    strength.level === 'fair' ? 'bg-amber-400 w-[40%]' :
+                    strength.level === 'decent' ? 'bg-yellow-300 w-[50%]' :
+                    strength.level === 'solid' ? 'bg-lime-400 w-[60%]' :
+                    strength.level === 'strong' ? 'bg-emerald-500 w-[70%]' :
+                    strength.level === 'fortress' ? 'bg-cyan-400 w-[80%]' :
+                    strength.level === 'unbreakable' ? 'bg-blue-400 w-[90%]' :
+                    'bg-purple-400 w-full'
+                  }`}
+                />
+              </div>
+              <p className="text-xs text-gray-400">
+                Estimated crack time: <span className="text-gray-300">{strength.crackTime}</span>
+              </p>
+            </div>
           )}
 
           <div className="space-y-6">

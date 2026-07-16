@@ -160,3 +160,93 @@ export function generatePassword(length: number, options: PasswordOptions): stri
     ? generateMemorablePassword(length, options)
     : generateRandomPassword(length, options);
 }
+
+export type StrengthLevel = 'pathetic' | 'weak' | 'meh' | 'fair' | 'decent' | 'solid' | 'strong' | 'fortress' | 'unbreakable' | 'overkill';
+
+export interface PasswordStrength {
+  entropy: number;
+  level: StrengthLevel;
+  crackTime: string;
+}
+
+export function calculateEntropy(password: string, options?: PasswordOptions): number {
+  if (!password) return 0;
+
+  if (options?.memorable && (options.uppercase || options.lowercase)) {
+    return calculateMemorableEntropy(password, options);
+  }
+
+  let poolSize = 0;
+  if (/[a-z]/.test(password)) poolSize += 26;
+  if (/[A-Z]/.test(password)) poolSize += 26;
+  if (/[0-9]/.test(password)) poolSize += 10;
+  if (/[^a-zA-Z0-9]/.test(password)) poolSize += 33;
+
+  if (poolSize === 0) return 0;
+  return password.length * Math.log2(poolSize);
+}
+
+function calculateMemorableEntropy(password: string, options: PasswordOptions): number {
+  const { numbers, symbols } = getCharsets(options);
+
+  // Estimate word count from the word budget portion
+  const reservedNumbers = options.numbers ? 2 : 0;
+  const reservedSymbols = options.symbols ? 2 : 0;
+  const wordBudget = password.length - reservedNumbers - reservedSymbols;
+
+  // Average word length in our list is ~4.5 chars; estimate word count
+  const avgWordLength = 4.5;
+  const estimatedWords = Math.max(1, Math.round(wordBudget / avgWordLength));
+
+  // Each word is chosen from ~622 candidates (filtered by length, but this is a good estimate)
+  const wordEntropy = estimatedWords * Math.log2(commonWords.length);
+
+  // Each digit is chosen from the digit pool
+  const digitEntropy = reservedNumbers * Math.log2(numbers.length || 1);
+
+  // Each symbol is chosen from the symbol pool
+  const symbolEntropy = reservedSymbols * Math.log2(symbols.length || 1);
+
+  return wordEntropy + digitEntropy + symbolEntropy;
+}
+
+function formatCrackTime(seconds: number): string {
+  if (seconds < 1) return 'Instant';
+  if (seconds < 60) return `${Math.round(seconds)} seconds`;
+  const minutes = seconds / 60;
+  if (minutes < 60) return `${Math.round(minutes)} minutes`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${Math.round(hours)} hours`;
+  const days = hours / 24;
+  if (days < 365) return `${Math.round(days)} days`;
+  const years = days / 365;
+  if (years < 1e3) return `${Math.round(years)} years`;
+  if (years < 1e6) return `${Math.round(years / 1e3)} thousand years`;
+  if (years < 1e9) return `${Math.round(years / 1e6)} million years`;
+  if (years < 1e12) return `${Math.round(years / 1e9)} billion years`;
+  return `${Math.round(years / 1e12)} trillion years`;
+}
+
+export function getPasswordStrength(password: string, options?: PasswordOptions): PasswordStrength {
+  const entropy = calculateEntropy(password, options);
+
+  let level: StrengthLevel;
+  if (entropy < 20) level = 'pathetic';
+  else if (entropy < 35) level = 'weak';
+  else if (entropy < 45) level = 'meh';
+  else if (entropy < 55) level = 'fair';
+  else if (entropy < 65) level = 'decent';
+  else if (entropy < 75) level = 'solid';
+  else if (entropy < 85) level = 'strong';
+  else if (entropy < 100) level = 'fortress';
+  else if (entropy < 120) level = 'unbreakable';
+  else level = 'overkill';
+
+  // Assume 10 billion guesses per second (modern GPU cluster)
+  const guessesPerSecond = 1e10;
+  const combinations = Math.pow(2, entropy);
+  const avgSeconds = combinations / (2 * guessesPerSecond);
+  const crackTime = formatCrackTime(avgSeconds);
+
+  return { entropy, level, crackTime };
+}
