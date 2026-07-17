@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import App from './App';
+import * as pg from './passwordGenerator';
 
 describe('App component', () => {
   const originalClipboard = navigator.clipboard;
@@ -498,5 +499,34 @@ describe('App component', () => {
     expect(writeText).not.toHaveBeenCalledWith('');
 
     vi.useRealTimers();
+  });
+
+  describe('renders all strength levels', () => {
+    const strengthLevels: Array<{ level: pg.StrengthLevel; label: string }> = [
+      { level: 'pathetic', label: 'Pathetic' },
+      { level: 'weak', label: 'Weak' },
+      { level: 'meh', label: 'Meh' },
+      { level: 'decent', label: 'Decent' },
+      { level: 'solid', label: 'Solid' },
+      { level: 'strong', label: 'Strong' },
+      { level: 'fortress', label: 'Fortress' },
+      { level: 'overkill', label: 'Overkill' },
+    ];
+
+    strengthLevels.forEach(({ level, label }) => {
+      it(`displays strength level: ${level}`, () => {
+        vi.spyOn(pg, 'generatePassword').mockReturnValue('TestPass1!');
+        vi.spyOn(pg, 'getPasswordStrength').mockReturnValue({
+          entropy: 50,
+          level,
+          crackTime: '1 year',
+        });
+
+        render(<App />);
+        expect(screen.getByText(label)).toBeInTheDocument();
+
+        vi.restoreAllMocks();
+      });
+    });
   });
 });

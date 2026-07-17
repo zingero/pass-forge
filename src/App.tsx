@@ -35,6 +35,7 @@ function App() {
   const sliderContainerRef = useRef<HTMLDivElement>(null);
   const clipboardTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval>>();
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const clipboardClearDeadlineRef = useRef<number | null>(null);
 
   const generatePassword = useCallback(() => {
@@ -73,6 +74,7 @@ function App() {
     return () => {
       if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
     };
   }, []);
 
@@ -113,7 +115,8 @@ function App() {
       await navigator.clipboard.writeText(password);
       setCopied(true);
       setShowPassword(false);
-      setTimeout(() => setCopied(false), 2000);
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+      copiedTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
 
       if (clipboardTimeoutRef.current) clearTimeout(clipboardTimeoutRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
@@ -167,7 +170,8 @@ function App() {
               value={password}
               readOnly
               aria-label="Generated password"
-              className="flex-1 bg-transparent outline-none"
+              aria-live="polite"
+              className="flex-1 bg-transparent outline-none font-mono"
               placeholder="Generated password will appear here"
             />
             {password && (
@@ -245,7 +249,7 @@ function App() {
                     }[strength.level]}
                   </span>
               </div>
-              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.round(strength.entropy)} aria-valuemin={0} aria-valuemax={120} aria-label={`Password strength: ${strength.level}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
                     strength.level === 'pathetic' ? 'bg-red-500 w-[10%]' :

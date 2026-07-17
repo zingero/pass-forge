@@ -406,6 +406,33 @@ describe('generatePassword', () => {
     const options: PasswordOptions = { ...defaultOptions, memorable: false };
     expect(() => generateRandomPassword(2, options)).toThrow('Password length is too short for the selected options');
   });
+
+  it('throws RangeError when length is below MIN_LENGTH', () => {
+    expect(() => generatePassword(4, defaultOptions)).toThrow('Password length must be between 8 and 32');
+  });
+
+  it('throws RangeError when length is above MAX_LENGTH', () => {
+    expect(() => generatePassword(100, defaultOptions)).toThrow('Password length must be between 8 and 32');
+  });
+
+  it('shuffles entire result when only numbers and symbols are selected (no ordering bias)', () => {
+    const options: PasswordOptions = {
+      uppercase: false, lowercase: false, numbers: true, symbols: true,
+      avoidSimilar: false, memorable: true,
+    };
+    // Generate multiple passwords and verify they are not always digits-first
+    let hasSymbolBeforeDigit = false;
+    for (let i = 0; i < 20; i++) {
+      const password = generateMemorablePassword(20, options);
+      const firstSymbolIdx = password.search(/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/);
+      const firstDigitIdx = password.search(/[0-9]/);
+      if (firstSymbolIdx >= 0 && firstDigitIdx >= 0 && firstSymbolIdx < firstDigitIdx) {
+        hasSymbolBeforeDigit = true;
+        break;
+      }
+    }
+    expect(hasSymbolBeforeDigit).toBe(true);
+  });
 });
 
 describe('calculateEntropy', () => {
@@ -519,5 +546,60 @@ describe('getPasswordStrength', () => {
     const randomEntropy = calculateEntropy(password);
     const memorableEntropy = calculateEntropy(password, memorableOptions);
     expect(memorableEntropy).toBeLessThan(randomEntropy);
+  });
+
+  it('uses standard entropy for memorable passwords without letter options', () => {
+    const options: PasswordOptions = {
+      uppercase: false, lowercase: false, numbers: true, symbols: true,
+      avoidSimilar: false, memorable: true,
+    };
+    // Should fall through to standard pool calculation (10 + 33 = 43)
+    const entropy = calculateEntropy('12!@34#$', options);
+    expect(entropy).toBeCloseTo(8 * Math.log2(43), 1);
+  });
+
+  it('returns minutes crack time for medium-low entropy', () => {
+    // 9 lowercase chars → entropy ≈ 42.3 → ~4 minutes
+    const result = getPasswordStrength('abcdefghi');
+    expect(result.crackTime).toMatch(/minutes/);
+  });
+
+  it('returns hours crack time for medium entropy', () => {
+    // 10 lowercase chars → entropy ≈ 47.0 → ~2 hours
+    const result = getPasswordStrength('abcdefghij');
+    expect(result.crackTime).toMatch(/hours/);
+  });
+
+  it('returns million years crack time for high entropy', () => {
+    // 13 chars all classes → entropy ≈ 85.5 → ~77 million years
+    const result = getPasswordStrength('Ab1!Cd2@Ef3#G');
+    expect(result.crackTime).toMatch(/million years/);
+  });
+
+  it('calculates memorable entropy with numbers disabled', () => {
+    const options: PasswordOptions = {
+      uppercase: true, lowercase: true, numbers: false, symbols: true,
+      avoidSimilar: false, memorable: true,
+    };
+    const entropy = calculateEntropy('TigerMaple!!', options);
+    expect(entropy).toBeGreaterThan(0);
+  });
+
+  it('calculates memorable entropy with symbols disabled', () => {
+    const options: PasswordOptions = {
+      uppercase: true, lowercase: true, numbers: true, symbols: false,
+      avoidSimilar: false, memorable: true,
+    };
+    const entropy = calculateEntropy('TigerMaple72', options);
+    expect(entropy).toBeGreaterThan(0);
+  });
+
+  it('calculates memorable entropy with both numbers and symbols disabled', () => {
+    const options: PasswordOptions = {
+      uppercase: true, lowercase: true, numbers: false, symbols: false,
+      avoidSimilar: false, memorable: true,
+    };
+    const entropy = calculateEntropy('TigerMaple', options);
+    expect(entropy).toBeGreaterThan(0);
   });
 });

@@ -15,6 +15,8 @@ export const MAX_LENGTH = 32;
 const SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
 function getUnbiasedIndex(max: number): number {
+  if (max <= 0) throw new RangeError('max must be a positive integer');
+  if (max === 1) return 0;
   const limit = max * Math.floor(0x100000000 / max);
   const arr = new Uint32Array(1);
   let value: number;
@@ -104,10 +106,14 @@ export function generateMemorablePassword(length: number, options: PasswordOptio
     }
   }
 
-  // Shuffle only the non-word suffix (numbers + symbols) to preserve word readability
-  const wordPart = result.slice(0, wordBudget);
-  const nonWordPart = result.slice(wordBudget);
-  return wordPart + shuffleString(nonWordPart);
+  // When words are present, shuffle only the suffix to preserve readability
+  if (options.uppercase || options.lowercase) {
+    const wordPart = result.slice(0, wordBudget);
+    const nonWordPart = result.slice(wordBudget);
+    return wordPart + shuffleString(nonWordPart);
+  }
+  // No words — shuffle the entire result to avoid ordering bias
+  return shuffleString(result);
 }
 
 export function generateRandomPassword(length: number, options: PasswordOptions): string {
@@ -156,6 +162,9 @@ export function generateRandomPassword(length: number, options: PasswordOptions)
 }
 
 export function generatePassword(length: number, options: PasswordOptions): string {
+  if (length < MIN_LENGTH || length > MAX_LENGTH) {
+    throw new RangeError(`Password length must be between ${MIN_LENGTH} and ${MAX_LENGTH}`);
+  }
   return options.memorable
     ? generateMemorablePassword(length, options)
     : generateRandomPassword(length, options);
