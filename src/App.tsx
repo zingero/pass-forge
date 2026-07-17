@@ -1,16 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { Copy, X, Check, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { generatePassword as generate, getPasswordStrength, PasswordOptions, PasswordStrength, MIN_LENGTH, MAX_LENGTH } from './passwordGenerator';
-import logoSvg from '/logo.svg';
 
 const CLIPBOARD_CLEAR_DELAY_SEC = 10;
 
-const optionEntries: { key: keyof PasswordOptions; label: string }[] = [
+const optionEntries: { key: keyof PasswordOptions; label: string; labelNode?: ReactNode }[] = [
   { key: 'uppercase', label: 'Uppercase' },
   { key: 'lowercase', label: 'Lowercase' },
   { key: 'numbers', label: 'Numbers' },
   { key: 'symbols', label: 'Symbols' },
-  { key: 'avoidSimilar', label: 'Avoid Similar Characters (1, l, I, 0, O)' },
+  { key: 'avoidSimilar', label: 'Avoid Similar Characters (1, l, I, 0, O)', labelNode: <>Avoid Similar Characters (<code className="font-mono">1, l, I, 0, O</code>)</> },
   { key: 'memorable', label: 'Memorable' },
 ];
 
@@ -54,7 +53,6 @@ function App() {
       setPassword(newPassword);
       setStrength(getPasswordStrength(newPassword, options));
       setError(null);
-      setShowPassword(true);
     } catch (e) {
       setPassword('');
       setStrength(null);
@@ -93,7 +91,12 @@ function App() {
       clipboardClearDeadlineRef.current = null;
       setClipboardPendingClear(false);
     }).catch(() => {
-      setClipboardPendingClear(true);
+      if (!document.hasFocus()) {
+        setClipboardPendingClear(true);
+      } else {
+        clipboardClearDeadlineRef.current = null;
+        setClipboardPendingClear(false);
+      }
     });
   }, []);
 
@@ -119,7 +122,7 @@ function App() {
     };
   }, [clearClipboard]);
 
-  const copyToClipboard = async () => {
+  const copyToClipboard = useCallback(async () => {
     if (!password) return;
     try {
       await navigator.clipboard.writeText(password);
@@ -150,7 +153,21 @@ function App() {
     } catch {
       setError('Failed to copy to clipboard');
     }
-  };
+  }, [password, clearClipboard]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const selection = window.getSelection()?.toString();
+        if (!selection) {
+          e.preventDefault();
+          copyToClipboard();
+        }
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [copyToClipboard]);
 
   const clearPassword = () => {
     setPassword('');
@@ -174,7 +191,7 @@ function App() {
       </button>
       <div className="max-w-xl w-full space-y-8">
         <div className="text-center">
-          <img src={logoSvg} alt="PassForge logo" className="mx-auto h-16 w-16 drop-shadow-lg" />
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="PassForge logo" className="mx-auto h-16 w-16 drop-shadow-lg" />
           <h1 className="mt-4 text-3xl font-bold tracking-tight">
             <span className="text-emerald-600 dark:text-emerald-400">Pass</span>Forge
           </h1>
@@ -188,6 +205,7 @@ function App() {
               value={password}
               readOnly
               aria-label="Generated password"
+              aria-describedby="password-strength"
               aria-live="polite"
               className="flex-1 bg-transparent outline-none font-mono text-gray-900 dark:text-white"
               placeholder="Generated password will appear here"
@@ -215,7 +233,7 @@ function App() {
             <button
               onClick={copyToClipboard}
               className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-              title="Copy to clipboard"
+              title="Copy to clipboard (Ctrl+C)"
               aria-label="Copy to clipboard"
             >
               {copied ? <Check className="h-5 w-5 text-emerald-400" /> : <Copy className="h-5 w-5" />}
@@ -256,36 +274,36 @@ function App() {
             </div>
 
           {strength && password && (
-            <div className="space-y-2">
+            <div className="space-y-2" id="password-strength">
               <div className="text-sm font-medium">
-                  Strength:{' '}
-                  <span className={
-                    strength.level === 'pathetic' ? 'text-red-500' :
-                    strength.level === 'weak' ? 'text-red-400' :
-                    strength.level === 'meh' ? 'text-orange-400' :
-                    strength.level === 'fair' ? 'text-amber-400' :
-                    strength.level === 'decent' ? 'text-yellow-300' :
-                    strength.level === 'solid' ? 'text-lime-400' :
-                    strength.level === 'strong' ? 'text-emerald-400' :
-                    strength.level === 'fortress' ? 'text-cyan-400' :
-                    strength.level === 'unbreakable' ? 'text-blue-400' :
-                    'text-purple-400'
-                  }>
-                    {{
-                      pathetic: 'Pathetic',
-                      weak: 'Weak',
-                      meh: 'Meh',
-                      fair: 'Fair',
-                      decent: 'Decent',
-                      solid: 'Solid',
-                      strong: 'Strong',
-                      fortress: 'Fortress',
-                      unbreakable: 'Unbreakable',
-                      overkill: 'Overkill',
-                    }[strength.level]}
-                  </span>
+                Strength:{' '}
+                <span className={
+                  strength.level === 'pathetic' ? 'text-red-500' :
+                  strength.level === 'weak' ? 'text-red-400' :
+                  strength.level === 'meh' ? 'text-orange-400' :
+                  strength.level === 'fair' ? 'text-amber-400' :
+                  strength.level === 'decent' ? 'text-yellow-300' :
+                  strength.level === 'solid' ? 'text-lime-400' :
+                  strength.level === 'strong' ? 'text-emerald-400' :
+                  strength.level === 'fortress' ? 'text-cyan-400' :
+                  strength.level === 'unbreakable' ? 'text-blue-400' :
+                  'text-purple-400'
+                }>
+                  {{
+                    pathetic: 'Pathetic',
+                    weak: 'Weak',
+                    meh: 'Meh',
+                    fair: 'Fair',
+                    decent: 'Decent',
+                    solid: 'Solid',
+                    strong: 'Strong',
+                    fortress: 'Fortress',
+                    unbreakable: 'Unbreakable',
+                    overkill: 'Overkill',
+                  }[strength.level]}
+                </span>
               </div>
-              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.round(strength.entropy)} aria-valuemin={0} aria-valuemax={120} aria-label={`Password strength: ${strength.level}`}>
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.min(Math.round(strength.entropy), 200)} aria-valuemin={0} aria-valuemax={200} aria-label={`Password strength: ${strength.level}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
                     strength.level === 'pathetic' ? 'bg-red-500 w-[10%]' :
@@ -308,13 +326,14 @@ function App() {
           )}
 
             <div className="grid grid-cols-1 gap-4">
-              {optionEntries.map(({ key, label }) => (
+              {optionEntries.map(({ key, label, labelNode }) => (
                 <label key={key} className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={options[key]}
                     onChange={(e) => setOptions({ ...options, [key]: e.target.checked })}
                     className="sr-only peer"
+                    aria-label={label}
                   />
                   <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer 
                     peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full 
@@ -323,7 +342,7 @@ function App() {
                     after:rounded-full after:h-5 after:w-5 after:transition-all 
                     peer-checked:bg-emerald-500"></div>
                   <span className="ms-3 text-sm font-medium">
-                    {label}
+                    {labelNode || label}
                   </span>
                 </label>
               ))}

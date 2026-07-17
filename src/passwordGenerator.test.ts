@@ -454,8 +454,8 @@ describe('calculateEntropy', () => {
 
   it('calculates entropy for all character classes', () => {
     const entropy = calculateEntropy('Ab1!');
-    // 4 chars * log2(95) ≈ 26.3
-    expect(entropy).toBeCloseTo(4 * Math.log2(95), 1);
+    // 4 chars * log2(88) ≈ 25.8 (pool: 26 upper + 26 lower + 10 digits + 26 symbols)
+    expect(entropy).toBeCloseTo(4 * Math.log2(88), 1);
   });
 
   it('accounts for digits in pool size', () => {
@@ -503,25 +503,25 @@ describe('getPasswordStrength', () => {
   });
 
   it('returns strong for strong passwords', () => {
-    // 12 chars * log2(95) ≈ 78.8 → strong (75-85)
+    // 12 chars * log2(88) ≈ 77.5 → strong (75-85)
     const result = getPasswordStrength('Abcdef1234!@');
     expect(result.level).toBe('strong');
   });
 
   it('returns fortress for very strong passwords', () => {
-    // 14 chars * log2(95) ≈ 92 → fortress (85-100)
+    // 14 chars * log2(88) ≈ 90.4 → fortress (85-100)
     const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh');
     expect(result.level).toBe('fortress');
   });
 
   it('returns unbreakable for extremely strong passwords', () => {
-    // 16 chars * log2(95) ≈ 105 → unbreakable (100-120)
+    // 16 chars * log2(88) ≈ 103.3 → unbreakable (100-120)
     const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh4$');
     expect(result.level).toBe('unbreakable');
   });
 
   it('returns overkill for ridiculously long complex passwords', () => {
-    // 20 chars * log2(95) ≈ 131 → overkill (120+)
+    // 20 chars * log2(88) ≈ 129.2 → overkill (120+)
     const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh4$Jk5&');
     expect(result.level).toBe('overkill');
   });
@@ -553,9 +553,9 @@ describe('getPasswordStrength', () => {
       uppercase: false, lowercase: false, numbers: true, symbols: true,
       avoidSimilar: false, memorable: true,
     };
-    // Should fall through to standard pool calculation (10 + 33 = 43)
+    // Should fall through to standard pool calculation (10 + 26 = 36)
     const entropy = calculateEntropy('12!@34#$', options);
-    expect(entropy).toBeCloseTo(8 * Math.log2(43), 1);
+    expect(entropy).toBeCloseTo(8 * Math.log2(36), 1);
   });
 
   it('returns minutes crack time for medium-low entropy', () => {
@@ -571,7 +571,7 @@ describe('getPasswordStrength', () => {
   });
 
   it('returns million years crack time for high entropy', () => {
-    // 13 chars all classes → entropy ≈ 85.5 → ~77 million years
+    // 13 chars all classes → entropy ≈ 84 → ~31 million years
     const result = getPasswordStrength('Ab1!Cd2@Ef3#G');
     expect(result.crackTime).toMatch(/million years/);
   });
@@ -601,5 +601,71 @@ describe('getPasswordStrength', () => {
     };
     const entropy = calculateEntropy('TigerMaple', options);
     expect(entropy).toBeGreaterThan(0);
+  });
+
+  it('throws RangeError when length is below MIN_LENGTH in memorable mode', () => {
+    const options: PasswordOptions = { ...defaultOptions, memorable: true };
+    expect(() => generatePassword(7, options)).toThrow('Password length must be between 8 and 32');
+  });
+
+  it('throws RangeError when length is above MAX_LENGTH in memorable mode', () => {
+    const options: PasswordOptions = { ...defaultOptions, memorable: true };
+    expect(() => generatePassword(33, options)).toThrow('Password length must be between 8 and 32');
+  });
+
+  it('calculates memorable entropy with very short wordBudget (< 2)', () => {
+    // password length 5, numbers + symbols enabled → wordBudget = 5 - 2 - 2 = 1 (< 2)
+    const options: PasswordOptions = {
+      uppercase: true, lowercase: true, numbers: true, symbols: true,
+      avoidSimilar: false, memorable: true,
+    };
+    const entropy = calculateEntropy('Ab1!x', options);
+    // Should return only digit + symbol entropy since wordBudget < 2
+    expect(entropy).toBeGreaterThan(0);
+    // 2 * log2(10) + 2 * log2(26)
+    const expected = 2 * Math.log2(10) + 2 * Math.log2(26);
+    expect(entropy).toBeCloseTo(expected, 1);
+  });
+
+  it('calculates memorable entropy with large wordBudget (triggers large bigint path)', () => {
+    // A long password with no numbers/symbols → wordBudget = 28
+    // The DP paths value should exceed 2^53, exercising the large bigint branch in log2BigInt
+    const options: PasswordOptions = {
+      uppercase: true, lowercase: true, numbers: false, symbols: false,
+      avoidSimilar: false, memorable: true,
+    };
+    const longPassword = 'TigerMapleBrightSunnyFields';  // 27 chars
+    const entropy = calculateEntropy(longPassword, options);
+    expect(entropy).toBeGreaterThan(50);
+  });
+
+  it('returns days crack time for medium-high entropy', () => {
+    // 11 lowercase chars → entropy ≈ 51.7 → days
+    const result = getPasswordStrength('abcdefghijk');
+    expect(result.crackTime).toMatch(/days/);
+  });
+
+  it('returns thousand years crack time for high entropy', () => {
+    // 12 mixed case + digits → entropy ≈ 71.4 → thousands of years
+    const result = getPasswordStrength('Abcdefgh1234');
+    expect(result.crackTime).toMatch(/thousand years|million years/);
+  });
+
+  it('returns billion years crack time for very high entropy', () => {
+    // 17 chars all classes → entropy ≈ 110 → billions
+    const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh4$J');
+    expect(result.crackTime).toMatch(/billion years|trillion years/);
+  });
+
+  it('returns trillion years crack time for extreme entropy', () => {
+    // 20+ chars all classes → very high entropy
+    const result = getPasswordStrength('Ab1!Cd2@Ef3#Gh4$Jk5&Lm');
+    expect(result.crackTime).toMatch(/trillion years/);
+  });
+
+  it('returns seconds crack time for low entropy', () => {
+    // 4 lowercase chars → entropy ≈ 18.8 → a few seconds
+    const result = getPasswordStrength('abcd');
+    expect(result.crackTime).toMatch(/seconds|Instant/);
   });
 });

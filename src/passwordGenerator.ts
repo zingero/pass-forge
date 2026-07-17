@@ -17,13 +17,13 @@ const SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 function getUnbiasedIndex(max: number): number {
   if (max <= 0) throw new RangeError('max must be a positive integer');
   if (max === 1) return 0;
-  const limit = max * Math.floor(0x100000000 / max);
+  const rejectThreshold = max * Math.floor(0x100000000 / max);
   const arr = new Uint32Array(1);
   let value: number;
   do {
     crypto.getRandomValues(arr);
     value = arr[0];
-  } while (value >= limit);
+  } while (value >= rejectThreshold);
   return value % max;
 }
 
@@ -51,12 +51,12 @@ function shuffleString(str: string): string {
 }
 
 export function generateMemorablePassword(length: number, options: PasswordOptions): string {
-  const { numbers, symbols } = getCharsets(options);
-  let result = '';
-
   if (!options.uppercase && !options.lowercase && !options.numbers && !options.symbols) {
     throw new Error('Please select at least one option');
   }
+
+  const { numbers, symbols } = getCharsets(options);
+  let result = '';
 
   const reservedNumbers = options.numbers ? 2 : 0;
   const reservedSymbols = options.symbols ? 2 : 0;
@@ -189,26 +189,61 @@ export function calculateEntropy(password: string, options?: PasswordOptions): n
   if (/[a-z]/.test(password)) poolSize += 26;
   if (/[A-Z]/.test(password)) poolSize += 26;
   if (/[0-9]/.test(password)) poolSize += 10;
-  if (/[^a-zA-Z0-9]/.test(password)) poolSize += 33;
+  if (/[^a-zA-Z0-9]/.test(password)) poolSize += SYMBOLS.length;
 
   if (poolSize === 0) return 0;
   return password.length * Math.log2(poolSize);
 }
 
+function log2BigInt(n: bigint): number {
+  if (n <= 0n) return 0;
+  const s = n.toString(2);
+  const bitLen = s.length;
+  if (bitLen <= 53) {
+    return Math.log2(Number(n));
+  }
+  // For large numbers, use top 53 bits for precision
+  const topBits = Number(n >> BigInt(bitLen - 53));
+  return Math.log2(topBits) + (bitLen - 53);
+}
+
 function calculateMemorableEntropy(password: string, options: PasswordOptions): number {
   const { numbers, symbols } = getCharsets(options);
 
-  // Estimate word count from the word budget portion
   const reservedNumbers = options.numbers ? 2 : 0;
   const reservedSymbols = options.symbols ? 2 : 0;
   const wordBudget = password.length - reservedNumbers - reservedSymbols;
 
-  // Average word length in our list is ~4.5 chars; estimate word count
-  const avgWordLength = 4.5;
-  const estimatedWords = Math.max(1, Math.round(wordBudget / avgWordLength));
+  if (wordBudget < 2) {
+    // Too short for words, only digits/symbols contribute
+    const digitEntropy = reservedNumbers * Math.log2(numbers.length || 1);
+    const symbolEntropy = reservedSymbols * Math.log2(symbols.length || 1);
+    return digitEntropy + symbolEntropy;
+  }
 
-  // Each word is chosen from ~622 candidates (filtered by length, but this is a good estimate)
-  const wordEntropy = estimatedWords * Math.log2(commonWords.length);
+  // Count words by length
+  const maxWordLen = commonWords.reduce((max, w) => Math.max(max, w.length), 0);
+  const wordsByLength: number[] = new Array(maxWordLen + 1).fill(0);
+  for (const w of commonWords) {
+    wordsByLength[w.length]++;
+  }
+
+  // DP: paths[i] = total number of distinct word sequences that fill exactly i characters
+  // This mirrors the generation algorithm's filtering: length <= remaining && remaining - length !== 1
+  const paths: bigint[] = new Array(wordBudget + 1).fill(0n);
+  paths[0] = 1n;
+
+  for (let i = 2; i <= wordBudget; i++) {
+    for (let L = 2; L <= Math.min(i, maxWordLen); L++) {
+      if (i - L === 1) continue; // generation skips choices that leave exactly 1 char
+      if (wordsByLength[L] > 0 && paths[i - L] > 0n) {
+        paths[i] += BigInt(wordsByLength[L]) * paths[i - L];
+      }
+    }
+  }
+
+  // Entropy from the word portion
+  const wordEntropy = paths[wordBudget] > 0n ? log2BigInt(paths[wordBudget]) : 0;
 
   // Each digit is chosen from the digit pool
   const digitEntropy = reservedNumbers * Math.log2(numbers.length || 1);
@@ -229,11 +264,17 @@ function formatCrackTime(seconds: number): string {
   const days = hours / 24;
   if (days < 365) return `${Math.round(days)} days`;
   const years = days / 365;
-  if (years < 1e3) return `${Math.round(years)} years`;
-  if (years < 1e6) return `${Math.round(years / 1e3)} thousand years`;
-  if (years < 1e9) return `${Math.round(years / 1e6)} million years`;
-  if (years < 1e12) return `${Math.round(years / 1e9)} billion years`;
-  return `${Math.round(years / 1e12)} trillion years`;
+  if (years < 1e3) return `${formatNumber(years)} years`;
+  if (years < 1e6) return `${formatNumber(years / 1e3)} thousand years`;
+  if (years < 1e9) return `${formatNumber(years / 1e6)} million years`;
+  if (years < 1e12) return `${formatNumber(years / 1e9)} billion years`;
+  return `${formatNumber(years / 1e12)} trillion years`;
+}
+
+function formatNumber(n: number): string {
+  if (n >= 100) return Math.round(n).toLocaleString();
+  if (n >= 10) return Math.round(n).toString();
+  return n.toFixed(1);
 }
 
 export function getPasswordStrength(password: string, options?: PasswordOptions): PasswordStrength {

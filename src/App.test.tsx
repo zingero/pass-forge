@@ -4,16 +4,16 @@ import App from './App';
 import * as pg from './passwordGenerator';
 
 describe('App component', () => {
-  const originalClipboard = navigator.clipboard;
-
   beforeEach(() => {
-    Object.assign(navigator, {
-      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      writable: true,
+      configurable: true,
     });
   });
 
   afterEach(() => {
-    Object.assign(navigator, { clipboard: originalClipboard });
+    vi.restoreAllMocks();
   });
 
   it('renders the heading', () => {
@@ -61,7 +61,7 @@ describe('App component', () => {
     expect(screen.getByText('Lowercase')).toBeInTheDocument();
     expect(screen.getByText('Numbers')).toBeInTheDocument();
     expect(screen.getByText('Symbols')).toBeInTheDocument();
-    expect(screen.getByText('Avoid Similar Characters (1, l, I, 0, O)')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Avoid Similar Characters (1, l, I, 0, O)' })).toBeInTheDocument();
     expect(screen.getByText('Memorable')).toBeInTheDocument();
   });
 
@@ -79,7 +79,7 @@ describe('App component', () => {
   it('copies password to clipboard when copy button is clicked', async () => {
     render(<App />);
     const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     fireEvent.click(copyButton);
 
@@ -89,7 +89,7 @@ describe('App component', () => {
   it('shows copied feedback and resets after timeout', async () => {
     vi.useFakeTimers();
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -117,7 +117,7 @@ describe('App component', () => {
     (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mockClear();
 
     // After clear, the clear button disappears, but copy remains
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
     fireEvent.click(copyButton);
 
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -222,7 +222,7 @@ describe('App component', () => {
     });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -237,7 +237,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -257,7 +257,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -289,7 +289,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -309,7 +309,7 @@ describe('App component', () => {
     const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
     expect(input.type).toBe('text');
 
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
     await act(async () => {
       fireEvent.click(copyButton);
     });
@@ -337,7 +337,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -360,7 +360,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -383,7 +383,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -425,7 +425,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -456,7 +456,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -484,7 +484,7 @@ describe('App component', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<App />);
-    const copyButton = screen.getByTitle('Copy to clipboard');
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
     await act(async () => {
       fireEvent.click(copyButton);
@@ -506,10 +506,12 @@ describe('App component', () => {
       { level: 'pathetic', label: 'Pathetic' },
       { level: 'weak', label: 'Weak' },
       { level: 'meh', label: 'Meh' },
+      { level: 'fair', label: 'Fair' },
       { level: 'decent', label: 'Decent' },
       { level: 'solid', label: 'Solid' },
       { level: 'strong', label: 'Strong' },
       { level: 'fortress', label: 'Fortress' },
+      { level: 'unbreakable', label: 'Unbreakable' },
       { level: 'overkill', label: 'Overkill' },
     ];
 
@@ -528,5 +530,168 @@ describe('App component', () => {
         vi.restoreAllMocks();
       });
     });
+  });
+
+  it('copies password via Ctrl+C keyboard shortcut when no text is selected', async () => {
+    render(<App />);
+    const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
+    const password = input.value;
+    expect(password).not.toBe('');
+
+    vi.spyOn(window, 'getSelection').mockReturnValue({ toString: () => '' } as Selection);
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'c', ctrlKey: true });
+    });
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(password);
+  });
+
+  it('copies password via Meta+C keyboard shortcut (macOS)', async () => {
+    render(<App />);
+    const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
+    const password = input.value;
+    expect(password).not.toBe('');
+
+    vi.spyOn(window, 'getSelection').mockReturnValue({ toString: () => '' } as Selection);
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'c', metaKey: true });
+    });
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(password);
+  });
+
+  it('does not intercept Ctrl+C when text is selected', () => {
+    render(<App />);
+
+    vi.spyOn(window, 'getSelection').mockReturnValue({ toString: () => 'some selected text' } as unknown as Selection);
+
+    (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mockClear();
+
+    fireEvent.keyDown(document, { key: 'c', ctrlKey: true });
+
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  it('does not intercept keydown for non-c keys', () => {
+    render(<App />);
+    (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mockClear();
+
+    fireEvent.keyDown(document, { key: 'v', ctrlKey: true });
+
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  it('shows pending clear message when clipboard clear fails while focused', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn()
+      .mockResolvedValueOnce(undefined) // copy succeeds
+      .mockRejectedValueOnce(new Error('fail')); // clear fails
+
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    // Mock hasFocus to return true
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    // Advance to fire the clipboard clear timeout
+    await act(async () => {
+      vi.advanceTimersByTime(10000);
+    });
+
+    // When hasFocus() is true and clear fails, the pending state is cleared
+    // (the else branch sets clipboardClearDeadlineRef to null and clipboardPendingClear to false)
+    expect(screen.queryByText(/Focus back on this page/)).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('shows pending clear message when clipboard clear fails while not focused', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn()
+      .mockResolvedValueOnce(undefined) // copy succeeds
+      .mockRejectedValueOnce(new Error('fail')); // clear fails
+
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    // Mock hasFocus to return false (page not focused)
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    // Advance to fire the clipboard clear timeout
+    await act(async () => {
+      vi.advanceTimersByTime(10000);
+    });
+
+    // When hasFocus() is false and clear fails, pendingClear message is shown
+    expect(screen.getByText(/Focus back on this page to clear clipboard/)).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('toggles dark mode when theme button is clicked', () => {
+    render(<App />);
+    const darkModeButton = screen.getByTitle(/Switch to/);
+    fireEvent.click(darkModeButton);
+    expect(localStorage.getItem('theme')).toBeDefined();
+  });
+
+  it('clears clipboard on focus after timer already cleaned up (deadline passed scenario)', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn()
+      .mockResolvedValueOnce(undefined) // copy succeeds
+      .mockResolvedValueOnce(undefined); // timer clear succeeds
+
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<App />);
+    const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    // Let clipboard timeout fire normally (clears timers internally)
+    await act(async () => {
+      vi.advanceTimersByTime(10000);
+    });
+
+    // Now trigger focus - deadline was cleared by the successful clear
+    writeText.mockClear();
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    // Should not attempt another clear since deadline is null
+    expect(writeText).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it('reads stored theme from localStorage on mount', () => {
+    localStorage.setItem('theme', 'light');
+    render(<App />);
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+    localStorage.removeItem('theme');
+  });
+
+  it('reads dark theme from localStorage on mount', () => {
+    localStorage.setItem('theme', 'dark');
+    render(<App />);
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    localStorage.removeItem('theme');
   });
 });

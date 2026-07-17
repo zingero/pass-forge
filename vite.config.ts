@@ -1,16 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/pass-forge/',
   plugins: [react()],
-  resolve: {
-    alias: {
-      '/logo.svg': path.resolve(__dirname, 'public/logo.svg'),
-    },
-  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
