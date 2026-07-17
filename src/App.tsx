@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Copy, X, Check, Eye, EyeOff } from 'lucide-react';
+import { Copy, X, Check, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { generatePassword as generate, getPasswordStrength, PasswordOptions, PasswordStrength, MIN_LENGTH, MAX_LENGTH } from './passwordGenerator';
 import logoSvg from '/logo.svg';
 
@@ -15,6 +15,11 @@ const optionEntries: { key: keyof PasswordOptions; label: string }[] = [
 ];
 
 function App() {
+  const [darkMode, setDarkMode] = useState(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored) return stored === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const [password, setPassword] = useState('');
   const [strength, setStrength] = useState<PasswordStrength | null>(null);
   const [copied, setCopied] = useState(false);
@@ -37,6 +42,11 @@ function App() {
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval>>();
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const clipboardClearDeadlineRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   const generatePassword = useCallback(() => {
     try {
@@ -153,31 +163,39 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-white flex items-center justify-center p-4">
+      <button
+        onClick={() => setDarkMode(!darkMode)}
+        className="absolute top-4 right-4 p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {darkMode ? <Sun className="h-5 w-5 text-yellow-400" /> : <Moon className="h-5 w-5 text-gray-600" />}
+      </button>
       <div className="max-w-xl w-full space-y-8">
         <div className="text-center">
           <img src={logoSvg} alt="PassForge logo" className="mx-auto h-16 w-16 drop-shadow-lg" />
           <h1 className="mt-4 text-3xl font-bold tracking-tight">
-            <span className="text-emerald-400">Pass</span>Forge
+            <span className="text-emerald-600 dark:text-emerald-400">Pass</span>Forge
           </h1>
-          <p className="mt-2 text-gray-400">Forge strong passwords locally in your browser</p>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">Forge strong passwords locally in your browser</p>
         </div>
 
-        <div className="bg-gray-800 p-6 rounded-lg shadow-xl space-y-6">
-          <div className="flex items-center gap-2 bg-gray-700 p-3 rounded">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl space-y-6">
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-3 rounded">
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               readOnly
               aria-label="Generated password"
               aria-live="polite"
-              className="flex-1 bg-transparent outline-none font-mono"
+              className="flex-1 bg-transparent outline-none font-mono text-gray-900 dark:text-white"
               placeholder="Generated password will appear here"
             />
             {password && (
               <button
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-2 hover:bg-gray-600 rounded transition-colors"
+                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                 title={showPassword ? 'Hide password' : 'Show password'}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
@@ -187,7 +205,7 @@ function App() {
             {password && (
               <button
                 onClick={clearPassword}
-                className="p-2 hover:bg-gray-600 rounded transition-colors"
+                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                 title="Clear password"
                 aria-label="Clear password"
               >
@@ -196,7 +214,7 @@ function App() {
             )}
             <button
               onClick={copyToClipboard}
-              className="p-2 hover:bg-gray-600 rounded transition-colors"
+              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
               title="Copy to clipboard"
               aria-label="Copy to clipboard"
             >
@@ -205,12 +223,12 @@ function App() {
           </div>
 
           {clipboardCountdown !== null && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Clipboard will be cleared in {clipboardCountdown}s
             </p>
           )}
           {clipboardCountdown === null && clipboardPendingClear && (
-            <p className="text-xs text-yellow-400">
+            <p className="text-xs text-yellow-600 dark:text-yellow-400">
               Focus back on this page to clear clipboard
             </p>
           )}
@@ -218,6 +236,24 @@ function App() {
           {error && (
             <p className="text-red-400 text-sm" role="alert">{error}</p>
           )}
+
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="password-length" className="flex justify-between text-sm font-medium mb-2">
+                <span>Password Length: {length}</span>
+              </label>
+              <div className="relative" ref={sliderContainerRef}>
+                <input
+                  id="password-length"
+                  type="range"
+                  min={MIN_LENGTH}
+                  max={MAX_LENGTH}
+                  value={length}
+                  onChange={(e) => setLength(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                />
+              </div>
+            </div>
 
           {strength && password && (
             <div className="space-y-2">
@@ -249,7 +285,7 @@ function App() {
                     }[strength.level]}
                   </span>
               </div>
-              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.round(strength.entropy)} aria-valuemin={0} aria-valuemax={120} aria-label={`Password strength: ${strength.level}`}>
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.round(strength.entropy)} aria-valuemin={0} aria-valuemax={120} aria-label={`Password strength: ${strength.level}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
                     strength.level === 'pathetic' ? 'bg-red-500 w-[10%]' :
@@ -265,29 +301,11 @@ function App() {
                   }`}
                 />
               </div>
-              <p className="text-xs text-gray-400">
-                Estimated crack time: <span className="text-gray-300">{strength.crackTime}</span>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Estimated crack time: <span className="text-gray-700 dark:text-gray-300">{strength.crackTime}</span>
               </p>
             </div>
           )}
-
-          <div className="space-y-6">
-            <div>
-              <label htmlFor="password-length" className="flex justify-between text-sm font-medium mb-2">
-                <span>Password Length: {length}</span>
-              </label>
-              <div className="relative" ref={sliderContainerRef}>
-                <input
-                  id="password-length"
-                  type="range"
-                  min={MIN_LENGTH}
-                  max={MAX_LENGTH}
-                  value={length}
-                  onChange={(e) => setLength(Number(e.target.value))}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-              </div>
-            </div>
 
             <div className="grid grid-cols-1 gap-4">
               {optionEntries.map(({ key, label }) => (
@@ -298,7 +316,7 @@ function App() {
                     onChange={(e) => setOptions({ ...options, [key]: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer 
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer 
                     peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full 
                     peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] 
                     after:start-[2px] after:bg-white after:border-gray-300 after:border 
@@ -320,8 +338,12 @@ function App() {
           </button>
         </div>
 
-        <p className="text-center text-sm text-gray-400">
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
           All passwords are generated locally in your browser. No data is sent to any server.
+        </p>
+
+        <p className="text-center text-xs text-gray-400/70 mt-2">
+          This site was vibecoded — no humans were harmed (or involved) in the making of this code. If anything breaks, blame the AI. The author takes absolutely zero responsibility and was probably napping at the time.
         </p>
       </div>
     </div>
