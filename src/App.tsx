@@ -209,13 +209,13 @@ function App() {
               aria-label="Generated password"
               aria-describedby="password-strength"
               aria-live="polite"
-              className="flex-1 bg-transparent outline-none font-mono text-gray-900 dark:text-white"
+              className="flex-1 min-w-0 bg-transparent outline-none font-mono text-gray-900 dark:text-white truncate"
               placeholder="Generated password will appear here"
             />
             {password && (
               <button
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                className="shrink-0 p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                 title={showPassword ? 'Hide password' : 'Show password'}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
@@ -225,7 +225,7 @@ function App() {
             {password && (
               <button
                 onClick={clearPassword}
-                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                className="shrink-0 p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                 title="Clear password"
                 aria-label="Clear password"
               >
@@ -234,7 +234,7 @@ function App() {
             )}
             <button
               onClick={copyToClipboard}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+              className="shrink-0 p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
               title="Copy to clipboard (Ctrl+C)"
               aria-label="Copy to clipboard"
             >
@@ -329,7 +329,7 @@ function App() {
 
             <div className="grid grid-cols-1 gap-4">
               {optionEntries.map(({ key, label, labelNode }) => (
-                <label key={key} className="relative inline-flex items-center cursor-pointer">
+                <label key={key} className="inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={options[key]}
@@ -337,7 +337,7 @@ function App() {
                     className="sr-only peer"
                     aria-label={label}
                   />
-                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer 
+                  <div className="relative shrink-0 w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer 
                     peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full 
                     peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] 
                     after:start-[2px] after:bg-white after:border-gray-300 after:border 
