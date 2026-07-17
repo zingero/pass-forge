@@ -15,8 +15,10 @@ const optionEntries: { key: keyof PasswordOptions; label: string; labelNode?: Re
 
 function App() {
   const [darkMode, setDarkMode] = useState(() => {
-    const stored = localStorage.getItem('theme');
-    if (stored) return stored === 'dark';
+    try {
+      const stored = localStorage.getItem('theme');
+      if (stored) return stored === 'dark';
+    } catch { /* localStorage unavailable */ }
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [password, setPassword] = useState('');
