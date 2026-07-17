@@ -46,7 +46,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+    try { localStorage.setItem('theme', darkMode ? 'dark' : 'light'); } catch { /* localStorage unavailable */ }
   }, [darkMode]);
 
   const generatePassword = useCallback(() => {
