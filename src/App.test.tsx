@@ -81,7 +81,9 @@ describe('App component', () => {
     const input = screen.getByPlaceholderText('Generated password will appear here') as HTMLInputElement;
     const copyButton = screen.getByTitle('Copy to clipboard (Ctrl+C)');
 
-    fireEvent.click(copyButton);
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(input.value);
   });
@@ -108,10 +110,12 @@ describe('App component', () => {
     vi.useRealTimers();
   });
 
-  it('does not copy when password is empty', () => {
+  it('does not copy when password is empty', async () => {
     render(<App />);
     const clearButton = screen.getByTitle('Clear password');
-    fireEvent.click(clearButton);
+    await act(async () => {
+      fireEvent.click(clearButton);
+    });
 
     // Clear calls writeText('') to clear clipboard; reset mock
     (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mockClear();
@@ -138,7 +142,9 @@ describe('App component', () => {
     expect(screen.getByText(/Clipboard will be cleared in/)).toBeInTheDocument();
 
     const clearButton = screen.getByTitle('Clear password');
-    fireEvent.click(clearButton);
+    await act(async () => {
+      fireEvent.click(clearButton);
+    });
 
     // Countdown should be gone and clipboard cleared immediately
     expect(screen.queryByText(/Clipboard will be cleared in/)).not.toBeInTheDocument();
@@ -368,7 +374,7 @@ describe('App component', () => {
 
     expect(screen.getByText(/Clipboard will be cleared in/)).toBeInTheDocument();
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(10000);
     });
 
@@ -405,10 +411,12 @@ describe('App component', () => {
     vi.useRealTimers();
   });
 
-  it('does not show show/hide button when password is empty', () => {
+  it('does not show show/hide button when password is empty', async () => {
     render(<App />);
     const clearButton = screen.getByTitle('Clear password');
-    fireEvent.click(clearButton);
+    await act(async () => {
+      fireEvent.click(clearButton);
+    });
 
     expect(screen.queryByTitle('Hide password')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Show password')).not.toBeInTheDocument();
