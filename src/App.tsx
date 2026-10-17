@@ -182,7 +182,7 @@ function App() {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-white flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-linear-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-white flex items-center justify-center p-4">
       <button
         onClick={() => setDarkMode(!darkMode)}
         className="absolute top-4 right-4 p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -339,8 +339,8 @@ function App() {
                   />
                   <div className="relative shrink-0 w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer 
                     peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full 
-                    peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] 
-                    after:start-[2px] after:bg-white after:border-gray-300 after:border 
+                    peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5
+                    after:inset-s-0.5 after:bg-white after:border-gray-300 after:border
                     after:rounded-full after:h-5 after:w-5 after:transition-all 
                     peer-checked:bg-emerald-500"></div>
                   <span className="ms-3 text-sm font-medium">
