@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 
 // Provide a localStorage mock when the environment doesn't supply one (e.g. Node without --localstorage-file)
 if (typeof globalThis.localStorage === 'undefined') {
